@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0d1117"/>
+  <title>Alerts – AeroSense</title>
+  <link rel="manifest" href="../manifest.json"/>
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png"/>
+  <!-- Theme init: read stored preference before CSS renders to prevent flash -->
+  <script>(function(){try{var s=JSON.parse(localStorage.getItem("aerosense_settings")||"{}");var t=s.theme||"dark";if(t==="system"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}document.documentElement.setAttribute("data-theme",t);}catch(e){document.documentElement.setAttribute("data-theme","dark");}})();</script>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <link rel="stylesheet" href="../css/dark.css"/>
+  <link rel="stylesheet" href="../css/light.css"/>
+  <link rel="stylesheet" href="../css/animations.css"/>
+  <style>
+    .alerts-layout {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: var(--space-2xl);
+      align-items: start;
+    }
+    @media (max-width: 1024px) { .alerts-layout { grid-template-columns: 1fr; } }
+    .location-mini-card {
+      border-radius: var(--radius-xl);
+      padding: var(--space-xl);
+    }
+    [data-theme="dark"] .location-mini-card { background: var(--bg-card); }
+    [data-theme="light"] .location-mini-card { background: var(--bg-card); box-shadow: var(--shadow-sm); }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <!-- Sidebar -->
+  <aside class="sidebar" role="navigation">
+    <div class="sidebar-logo">
+      <svg class="logo-icon" viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="16" fill="#3b82f6" opacity=".15"/>
+        <path d="M8 20c0-4.418 3.582-8 8-8s8 3.582 8 8" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="16" cy="12" r="3" fill="#3b82f6"/>
+        <path d="M10 24h12" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="logo-text"><span class="logo-aero">Aero</span>Sense</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="../index.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path stroke-linecap="round" d="M9 21V12h6v9"/></svg><span>Home</span></a>
+      <a href="radar.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg><span>Radar Map</span></a>
+      <a href="insights.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg><span>Insights</span></a>
+      <a href="alerts.html" class="nav-item active" aria-current="page"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span>Alerts</span><span class="nav-badge alerts-badge">3</span></a>
+      <a href="settings.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9"/></svg><span>Settings</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="search-bar">
+        <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Search city or place..." aria-label="Search"/>
+      </div>
+      <div class="topbar-actions">
+        <button class="topbar-btn topbar-theme-btn" aria-label="Toggle theme"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg></button>
+        <button class="topbar-btn" aria-label="Notifications"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span class="btn-badge alerts-badge">3</span></button>
+        <div class="avatar-btn">B</div>
+      </div>
+    </header>
+
+    <header class="mobile-topbar">
+      <div>
+        <div class="mt-logo"><span class="logo-aero">Aero</span>Sense</div>
+        <div style="font-size:var(--text-lg);font-weight:700;margin-top:2px">Alerts</div>
+      </div>
+      <div class="mt-actions">
+        <button class="mt-btn topbar-theme-btn" aria-label="Toggle theme"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg></button>
+        <button class="mt-btn" id="enable-notifications" aria-label="Enable notifications"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg></button>
+      </div>
+    </header>
+
+    <main class="page-content page-enter">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:var(--space-md)">
+        <div>
+          <h1 class="page-title">Alerts</h1>
+        </div>
+        <button class="view-all-btn" id="enable-notifications" style="padding:8px 16px;border-radius:var(--radius-full);background:rgba(59,130,246,.1);color:var(--color-brand);font-weight:600;font-size:var(--text-sm)">
+          🔔 Enable Notifications
+        </button>
+      </div>
+
+      <!-- Filter tabs -->
+      <div class="tab-bar" role="tablist">
+        <button class="tab-btn active" data-filter="all" role="tab">All Alerts</button>
+        <button class="tab-btn" data-filter="weather" role="tab">Weather</button>
+        <button class="tab-btn" data-filter="aqi" role="tab">Air Quality</button>
+        <button class="tab-btn" data-filter="uv" role="tab">UV Index</button>
+        <button class="tab-btn" data-filter="wind" role="tab">Wind</button>
+      </div>
+
+      <div class="alerts-layout">
+        <!-- Alerts list -->
+        <div>
+          <!-- Active Alerts -->
+          <section>
+            <h2 class="section-title mb-lg">Active Alerts</h2>
+            <div id="active-alerts">
+              <!-- Populated by JS -->
+              <div class="alert-card active">
+                <div class="ac-icon-wrap" style="background:rgba(59,130,246,.15)">🌧</div>
+                <div class="ac-body">
+                  <div class="ac-title">Heavy Rain Alert</div>
+                  <div class="ac-desc">Heavy rain expected in your area</div>
+                  <div class="ac-meta">
+                    <span>📅 Today, 4:30 PM – 7:30 PM</span>
+                    <span>📍 Affected Areas: Bengaluru, Bengaluru Rural</span>
+                  </div>
+                </div>
+                <div class="ac-badge" style="color:#ef4444;background:rgba(239,68,68,.15)">+ Active</div>
+              </div>
+              <div class="alert-card wind">
+                <div class="ac-icon-wrap" style="background:rgba(249,115,22,.15)">💨</div>
+                <div class="ac-body">
+                  <div class="ac-title">Strong Wind Alert</div>
+                  <div class="ac-desc">Strong winds with speed up to 40 km/h</div>
+                  <div class="ac-meta">
+                    <span>📅 Today, 12:00 PM – 8:00 PM</span>
+                    <span>📍 Affected Areas: Bengaluru</span>
+                  </div>
+                </div>
+                <div class="ac-badge" style="color:#f97316;background:rgba(249,115,22,.15)">+ Active</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Upcoming Alerts -->
+          <section style="margin-top:var(--space-2xl)">
+            <h2 class="section-title mb-lg">Upcoming Alerts</h2>
+            <div id="upcoming-alerts">
+              <div class="alert-card upcoming">
+                <div class="ac-icon-wrap" style="background:rgba(59,130,246,.1)">🌦</div>
+                <div class="ac-body">
+                  <div class="ac-title">Moderate Rain Expected</div>
+                  <div class="ac-desc">Rain likely to start in your area</div>
+                  <div class="ac-meta"><span>📅 Tomorrow, 9:00 AM – 12:00 PM</span></div>
+                </div>
+                <div class="ac-badge" style="color:#3b82f6;background:rgba(59,130,246,.15)">+ Upcoming</div>
+              </div>
+              <div class="alert-card uv">
+                <div class="ac-icon-wrap" style="background:rgba(234,179,8,.15)">☀️</div>
+                <div class="ac-body">
+                  <div class="ac-title">High UV Index</div>
+                  <div class="ac-desc">UV index may reach very high levels</div>
+                  <div class="ac-meta"><span>📅 Tomorrow, 11:00 AM – 3:00 PM</span></div>
+                </div>
+                <div class="ac-badge" style="color:#eab308;background:rgba(234,179,8,.15)">+ Upcoming</div>
+              </div>
+            </div>
+
+            <button class="view-all-btn mt-xl" id="view-all-alerts" style="margin:var(--space-xl) auto 0;display:block">
+              View All Alerts
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+          </section>
+        </div>
+
+        <!-- Right sidebar: location + alert settings -->
+        <aside style="display:flex;flex-direction:column;gap:var(--space-lg)">
+
+          <!-- Location mini card (desktop) -->
+          <div class="location-mini-card" id="alert-location-summary">
+            <div style="font-size:var(--text-xs);opacity:.6;margin-bottom:4px">Active Location</div>
+            <div style="font-weight:700;margin-bottom:8px">Bengaluru, India</div>
+            <div style="font-size:var(--text-2xl);font-weight:800">31°C</div>
+            <div style="font-size:var(--text-sm);opacity:.7;margin-bottom:8px">Clear Sky</div>
+            <div style="font-size:var(--text-lg);font-weight:700;color:#eab308">AQI 78</div>
+            <div style="font-size:var(--text-sm);color:#eab308">Moderate</div>
+          </div>
+
+          <!-- Alert Settings -->
+          <div class="card">
+            <h3 style="font-weight:700;margin-bottom:var(--space-md)">Alert Settings</h3>
+            <div id="alert-settings-list">
+              <!-- Populated by JS -->
+              <div class="alert-setting-row">
+                <div class="asr-icon" style="background:rgba(59,130,246,.15)">💧</div>
+                <div class="asr-body"><div class="asr-name">Rain Alerts</div><div class="asr-desc">Get notified about rain in your area</div></div>
+                <label class="toggle-switch"><input type="checkbox" checked/><span class="toggle-slider"></span></label>
+              </div>
+              <div class="alert-setting-row">
+                <div class="asr-icon" style="background:rgba(34,197,94,.15)">🌿</div>
+                <div class="asr-body"><div class="asr-name">Air Quality Alerts</div><div class="asr-desc">Get notified about poor air quality</div></div>
+                <label class="toggle-switch"><input type="checkbox" checked/><span class="toggle-slider"></span></label>
+              </div>
+              <div class="alert-setting-row">
+                <div class="asr-icon" style="background:rgba(234,179,8,.15)">☀️</div>
+                <div class="asr-body"><div class="asr-name">UV Index Alerts</div><div class="asr-desc">Get notified about high UV index</div></div>
+                <label class="toggle-switch"><input type="checkbox" checked/><span class="toggle-slider"></span></label>
+              </div>
+              <div class="alert-setting-row">
+                <div class="asr-icon" style="background:rgba(139,92,246,.15)">💨</div>
+                <div class="asr-body"><div class="asr-name">Wind Alerts</div><div class="asr-desc">Get notified about strong winds</div></div>
+                <label class="toggle-switch"><input type="checkbox"/><span class="toggle-slider"></span></label>
+              </div>
+              <div class="alert-setting-row">
+                <div class="asr-icon" style="background:rgba(239,68,68,.15)">⛈</div>
+                <div class="asr-body"><div class="asr-name">Severe Weather Alerts</div><div class="asr-desc">Get notified about severe weather</div></div>
+                <label class="toggle-switch"><input type="checkbox" checked/><span class="toggle-slider"></span></label>
+              </div>
+            </div>
+          </div>
+
+        </aside>
+      </div>
+    </main>
+
+    <nav class="bottom-nav">
+      <a href="../index.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/></svg><span class="bn-label">Home</span></a>
+      <a href="radar.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49"/></svg><span class="bn-label">Radar</span></a>
+      <a href="insights.html" class="bottom-nav-item"><div class="bottom-nav-fab"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg></div><span class="bn-label" style="margin-top:4px">Insights</span></a>
+      <a href="alerts.html" class="bottom-nav-item active" aria-current="page"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span class="bn-label">Alerts</span><span class="bn-badge">3</span></a>
+      <a href="settings.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg><span class="bn-label">Settings</span></a>
+    </nav>
+  </div>
+</div>
+
+<script type="module" src="../js/alerts.js"></script>
+<script type="module" src="../js/nav.js"></script>
+</body>
+</html>

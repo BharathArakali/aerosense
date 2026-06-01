@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0d1117"/>
+  <title>Radar Map – AeroSense</title>
+  <link rel="manifest" href="../manifest.json"/>
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png"/>
+  <script>(function(){try{var s=JSON.parse(localStorage.getItem("aerosense_settings")||"{}");var t=s.theme||"dark";if(t==="system"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}document.documentElement.setAttribute("data-theme",t);}catch(e){document.documentElement.setAttribute("data-theme","dark");}})();</script>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <link rel="stylesheet" href="../css/dark.css"/>
+  <link rel="stylesheet" href="../css/light.css"/>
+  <link rel="stylesheet" href="../css/animations.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <style>
+    .radar-layout {
+      display: grid;
+      grid-template-columns: 1fr 280px;
+      gap: var(--space-2xl);
+      align-items: start;
+    }
+    @media (max-width: 1024px) { .radar-layout { grid-template-columns: 1fr; } }
+    .map-wrapper {
+      height: 520px;
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      position: relative;
+    }
+    @media (max-width: 768px) { .map-wrapper { height: 340px; } }
+    #map { width: 100%; height: 100%; }
+    .map-fab {
+      position: absolute;
+      top: var(--space-lg);
+      right: var(--space-lg);
+      z-index: 500;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+    .map-ctrl-btn {
+      width: 38px; height: 38px;
+      border-radius: var(--radius-md);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; font-weight: 700;
+      cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+    .layer-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: var(--space-lg); }
+    .layer-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 14px;
+      border-radius: var(--radius-full);
+      font-size: var(--text-sm); font-weight: 600;
+      transition: background var(--transition-fast), color var(--transition-fast);
+    }
+    [data-theme="dark"] .layer-btn.active,
+    [data-theme="light"] .layer-btn.active { background: var(--color-brand) !important; color: #fff !important; }
+    /* Make sure Leaflet tiles are visible above overflow:hidden clip */
+    .leaflet-container { border-radius: 0; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" role="navigation">
+    <div class="sidebar-logo">
+      <svg class="logo-icon" viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="16" fill="#3b82f6" opacity=".15"/>
+        <path d="M8 20c0-4.418 3.582-8 8-8s8 3.582 8 8" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="16" cy="12" r="3" fill="#3b82f6"/>
+        <path d="M10 24h12" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="logo-text"><span class="logo-aero">Aero</span>Sense</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="../index.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path stroke-linecap="round" d="M9 21V12h6v9"/></svg><span>Home</span></a>
+      <a href="radar.html" class="nav-item active" aria-current="page"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg><span>Radar Map</span></a>
+      <a href="insights.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg><span>Insights</span></a>
+      <a href="alerts.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span>Alerts</span><span class="nav-badge alerts-badge">3</span></a>
+      <a href="settings.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9"/></svg><span>Settings</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-content">
+    <!-- Desktop topbar -->
+    <header class="topbar">
+      <div class="search-bar">
+        <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Search city or place..." aria-label="Search city"/>
+      </div>
+      <div class="topbar-actions">
+        <button class="topbar-btn topbar-theme-btn" aria-label="Toggle theme">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+        </button>
+        <button class="topbar-btn" aria-label="Notifications">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        </button>
+        <div class="avatar-btn">B</div>
+      </div>
+    </header>
+
+    <!-- Mobile topbar -->
+    <header class="mobile-topbar">
+      <div class="mt-logo"><span class="logo-aero">Aero</span>Sense</div>
+      <div class="mt-actions">
+        <button class="mt-btn topbar-theme-btn" aria-label="Toggle theme"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg></button>
+        <button class="mt-btn" aria-label="Share"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+      </div>
+    </header>
+
+    <main class="page-content page-enter">
+      <div class="page-header">
+        <h1 class="page-title">Radar Map</h1>
+      </div>
+
+      <!-- Layer tabs -->
+      <div class="layer-tabs" role="tablist">
+        <button class="layer-btn active" data-layer="rain" role="tab">💧 Rain</button>
+        <button class="layer-btn" data-layer="clouds" role="tab">☁️ Clouds</button>
+        <button class="layer-btn" data-layer="wind" role="tab">💨 Wind</button>
+        <button class="layer-btn" data-layer="aqi" role="tab">🌿 AQI</button>
+        <button class="layer-btn" data-layer="temp" role="tab">🌡 Temperature</button>
+      </div>
+
+      <div class="radar-layout">
+        <!-- Map + controls -->
+        <div style="display:flex;flex-direction:column;gap:var(--space-md)">
+          <div class="map-wrapper">
+            <div id="map"></div>
+            <div class="map-fab">
+              <button class="map-ctrl-btn" id="map-recenter" title="My location">◎</button>
+              <button class="map-ctrl-btn" id="zoom-in" title="Zoom in">+</button>
+              <button class="map-ctrl-btn" id="zoom-out" title="Zoom out">−</button>
+            </div>
+          </div>
+
+          <!-- Timeline slider -->
+          <div class="timeline-slider-wrap">
+            <div class="timeline-top">
+              <span class="timeline-time" id="timeline-time">Now</span>
+              <button class="timeline-now-btn hidden" id="timeline-now-btn">Now</button>
+            </div>
+            <input type="range" class="timeline-slider" id="timeline-slider" min="0" max="4" step="1" value="2" aria-label="Timeline"/>
+            <div class="timeline-labels">
+              <span>-2h</span><span>-1h</span><span>Now</span><span>+1h</span><span>+2h</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right sidebar (desktop) -->
+        <aside style="display:flex;flex-direction:column;gap:var(--space-lg)">
+          <!-- Rain info -->
+          <div class="card">
+            <div style="font-weight:700;margin-bottom:8px">Rain in your area</div>
+            <div id="rain-info">
+              <div style="opacity:.6;font-size:var(--text-sm)">Loading…</div>
+            </div>
+          </div>
+
+          <!-- Rain intensity legend -->
+          <div class="card">
+            <div style="font-weight:700;margin-bottom:12px">Rain Intensity</div>
+            <div class="rain-intensity-bar"></div>
+            <div style="display:flex;justify-content:space-between;font-size:var(--text-xs);opacity:.5;margin-top:6px">
+              <span>Light</span><span>Moderate</span><span>Heavy</span>
+            </div>
+          </div>
+
+          <!-- Timeline right panel -->
+          <div class="card">
+            <div style="font-weight:700;margin-bottom:12px">Timeline</div>
+            <div class="timeline-top mb-md">
+              <span class="timeline-time" id="timeline-time-2">Now</span>
+              <button class="timeline-now-btn" id="timeline-now-btn-2">▶ Now</button>
+            </div>
+            <input type="range" class="timeline-slider" id="timeline-slider-2" min="0" max="4" step="1" value="2" aria-label="Timeline"/>
+            <div class="timeline-labels">
+              <span>-2h</span><span>-1h</span><span>Now</span><span>+1h</span><span>+2h</span>
+            </div>
+          </div>
+
+          <!-- AeroScore -->
+          <div class="card" id="radar-aeroscore">
+            <div class="sc-label">AeroScore™</div>
+            <div class="sc-value" style="color:#22c55e">–<span>/100</span></div>
+            <div class="sc-status" style="color:#22c55e">Loading…</div>
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <!-- Bottom nav -->
+    <nav class="bottom-nav">
+      <a href="../index.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/></svg><span class="bn-label">Home</span></a>
+      <a href="radar.html" class="bottom-nav-item active"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49"/></svg><span class="bn-label">Radar</span></a>
+      <a href="insights.html" class="bottom-nav-item"><div class="bottom-nav-fab"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg></div><span class="bn-label" style="margin-top:4px">Insights</span></a>
+      <a href="alerts.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span class="bn-label">Alerts</span></a>
+      <a href="settings.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg><span class="bn-label">Settings</span></a>
+    </nav>
+  </div>
+</div>
+
+<!-- Leaflet -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<script>
+/* ============================================================
+   AeroSense Radar — self-contained (no ES modules)
+   Runs after Leaflet CDN is loaded synchronously above.
+============================================================ */
+(function () {
+  'use strict';
+
+  // ── Helpers ─────────────────────────────────────────────────
+  function getCached(key) {
+    try {
+      var raw = localStorage.getItem('aerosense_' + key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  // ── State ────────────────────────────────────────────────────
+  var map = null;
+  var activeOverlay = null;
+  var currentLayer = 'rain';
+  var lat = 12.9716, lon = 77.5946;
+  var locName = 'Your Location';
+
+  var loc = getCached('location');
+  if (loc && loc.lat) { lat = loc.lat; lon = loc.lon; locName = loc.name || locName; }
+
+  // ── Layer configs (free/public endpoints only) ───────────────
+  var LAYERS = {
+    rain:   { url: 'https://tilecache.rainviewer.com/v2/coverage/0/256/{z}/{x}/{y}/2/1_1.png', opacity: 0.65 },
+    clouds: { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', opacity: 0.0 }, // OSM base (no cloud overlay without API)
+    wind:   { url: null },
+    aqi:    { url: null },
+    temp:   { url: null },
+  };
+
+  // ── Init map ─────────────────────────────────────────────────
+  function initMap() {
+    var mapEl = document.getElementById('map');
+    if (!mapEl) return;
+
+    // Set explicit height — Leaflet needs pixel dimensions
+    var wrapper = mapEl.parentElement;
+    var wh = wrapper ? wrapper.offsetHeight : 0;
+    var targetH = wh > 20 ? wh : (window.innerWidth <= 768 ? 340 : 520);
+    mapEl.style.height = targetH + 'px';
+    mapEl.style.width  = '100%';
+
+    var isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    var tileUrl = isDark
+      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+    map = L.map('map', {
+      center:           [lat, lon],
+      zoom:             10,
+      zoomControl:      false,
+      attributionControl: true,
+      tap:              false,
+      preferCanvas:     true,
+    });
+
+    // Base tiles
+    L.tileLayer(tileUrl, {
+      subdomains:  'abcd',
+      maxZoom:     19,
+      attribution: '&copy; <a href="https://openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com">CARTO</a>',
+    }).addTo(map);
+
+    // Location dot
+    var dotIcon = L.divIcon({
+      className: '',
+      html: '<div style="width:14px;height:14px;border-radius:50%;background:#3b82f6;border:2.5px solid #fff;box-shadow:0 0 0 5px rgba(59,130,246,.3)"></div>',
+      iconSize: [14, 14], iconAnchor: [7, 7],
+    });
+    L.marker([lat, lon], { icon: dotIcon }).addTo(map)
+      .bindPopup('<b>' + locName + '</b>');
+
+    // Force size recalc after browser has painted
+    setTimeout(function () { if (map) map.invalidateSize(); }, 100);
+    setTimeout(function () { if (map) map.invalidateSize(); }, 500);
+
+    // Default overlay
+    setOverlay('rain');
+    updateSidebar();
+  }
+
+  // ── Overlay layers ───────────────────────────────────────────
+  function setOverlay(key) {
+    if (activeOverlay && map) { map.removeLayer(activeOverlay); activeOverlay = null; }
+    currentLayer = key;
+    var cfg = LAYERS[key];
+    if (!cfg || !cfg.url) { return; }
+    activeOverlay = L.tileLayer(cfg.url, {
+      opacity:      cfg.opacity,
+      subdomains:   'abcd',
+      errorTileUrl: '',
+    });
+    activeOverlay.on('tileerror', function () {});
+    if (map) activeOverlay.addTo(map);
+  }
+
+  // ── Layer tab buttons ────────────────────────────────────────
+  function setupLayerButtons() {
+    document.querySelectorAll('.layer-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.layer-btn').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        setOverlay(btn.getAttribute('data-layer'));
+      });
+    });
+  }
+
+  // ── Map controls ─────────────────────────────────────────────
+  function setupMapControls() {
+    var zi = document.getElementById('zoom-in');
+    var zo = document.getElementById('zoom-out');
+    var rc = document.getElementById('map-recenter');
+    if (zi) zi.addEventListener('click', function () { if (map) map.zoomIn(); });
+    if (zo) zo.addEventListener('click', function () { if (map) map.zoomOut(); });
+    if (rc) rc.addEventListener('click', function () {
+      if (map) map.flyTo([lat, lon], 10, { duration: 0.8 });
+    });
+  }
+
+  // ── Timeline sliders ─────────────────────────────────────────
+  function setupTimeline() {
+    var s1 = document.getElementById('timeline-slider');
+    var s2 = document.getElementById('timeline-slider-2');
+    var t1 = document.getElementById('timeline-time');
+    var t2 = document.getElementById('timeline-time-2');
+    var LABELS = ['-2h', '-1h', 'Now', '+1h', '+2h'];
+
+    function sync(val) {
+      var lbl = LABELS[+val] || 'Now';
+      if (t1) t1.textContent = lbl;
+      if (t2) t2.textContent = lbl;
+      var nowBtns = document.querySelectorAll('.timeline-now-btn');
+      nowBtns.forEach(function (b) {
+        if (+val === 2) b.classList.add('hidden'); else b.classList.remove('hidden');
+      });
+      if (activeOverlay) {
+        var base = LAYERS[currentLayer] ? (LAYERS[currentLayer].opacity || 0.65) : 0.65;
+        activeOverlay.setOpacity(Math.max(0.2, base - Math.abs(+val - 2) * 0.12));
+      }
+    }
+
+    if (s1) {
+      s1.value = 2;
+      s1.addEventListener('input', function () { if (s2) s2.value = s1.value; sync(s1.value); });
+    }
+    if (s2) {
+      s2.value = 2;
+      s2.addEventListener('input', function () { if (s1) s1.value = s2.value; sync(s2.value); });
+    }
+
+    document.querySelectorAll('#timeline-now-btn, #timeline-now-btn-2').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (s1) s1.value = 2;
+        if (s2) s2.value = 2;
+        sync(2);
+      });
+    });
+
+    sync(2);
+  }
+
+  // ── Sidebar data ─────────────────────────────────────────────
+  function updateSidebar() {
+    var cw = getCached('weather_cache');
+    var ca = getCached('aqi_cache');
+    if (!cw || !ca || !cw.data || !ca.data) return;
+    var w = cw.data, a = ca.data;
+
+    // Compute AeroScore
+    var aqi    = a.current.aqi || 50;
+    var aqiPen = aqi <= 50 ? 0 : aqi <= 100 ? 10 : aqi <= 150 ? 20 : aqi <= 200 ? 35 : 50;
+    var tDev   = Math.min(Math.abs(w.current.temp - 23) / 5, 3) * 5;
+    var hDev   = (w.current.humidity < 30 || w.current.humidity > 70) ? 10 : 0;
+    var uvPen  = w.current.uvIndex <= 2 ? 0 : w.current.uvIndex <= 5 ? 3 : w.current.uvIndex <= 7 ? 8 : 15;
+    var wPen   = w.current.windSpeed < 20 ? 0 : w.current.windSpeed < 40 ? 6 : 12;
+    var score  = Math.max(0, Math.min(100, Math.round(100 - aqiPen - tDev - hDev - uvPen - wPen)));
+    var color  = score >= 80 ? '#22c55e' : score >= 60 ? '#eab308' : score >= 40 ? '#f97316' : '#ef4444';
+    var label  = score >= 80 ? 'Good Conditions' : score >= 60 ? 'Fair Conditions' : score >= 40 ? 'Poor Conditions' : 'Hazardous';
+
+    var asEl = document.getElementById('radar-aeroscore');
+    if (asEl) {
+      asEl.innerHTML =
+        '<div class="sc-label">AeroScore™</div>' +
+        '<div class="sc-value" style="color:' + color + '">' + score + '<span>/100</span></div>' +
+        '<div class="sc-status" style="color:' + color + '">' + label + '</div>';
+    }
+
+    // Rain info
+    var rainInfo = document.getElementById('rain-info');
+    if (rainInfo && w.hourly) {
+      var next = -1;
+      for (var i = 0; i < w.hourly.length; i++) {
+        if (w.hourly[i].precipProb >= 40) { next = i; break; }
+      }
+      var timeStr = next === -1 ? 'No rain expected' : next === 0 ? 'Rain now' : 'in ' + next + 'h';
+      var pct     = next >= 0 ? w.hourly[next].precipProb : 0;
+      var icon    = next === -1 ? '☀️' : pct > 60 ? '🌧' : '🌦';
+      rainInfo.innerHTML =
+        '<div style="font-size:var(--text-sm);opacity:.6;margin-bottom:6px">Next precipitation</div>' +
+        '<div style="font-size:var(--text-xl);font-weight:700;color:var(--color-brand);margin-bottom:4px">' + timeStr + '</div>' +
+        (pct > 0 ? '<div style="font-size:var(--text-sm);opacity:.6">' + pct + '% chance</div>' : '') +
+        '<div style="margin-top:8px;font-size:2.5rem">' + icon + '</div>';
+    }
+  }
+
+  // ── Boot ─────────────────────────────────────────────────────
+  function boot() {
+    setupLayerButtons();
+    setupMapControls();
+    setupTimeline();
+    initMap();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+
+})();
+</script>
+
+<script type="module" src="../js/nav.js"></script>
+</body>
+</html>

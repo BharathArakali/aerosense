@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0d1117"/>
+  <title>Settings – AeroSense</title>
+  <link rel="manifest" href="../manifest.json"/>
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png"/>
+  <!-- Theme init: read stored preference before CSS renders to prevent flash -->
+  <script>(function(){try{var s=JSON.parse(localStorage.getItem("aerosense_settings")||"{}");var t=s.theme||"dark";if(t==="system"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}document.documentElement.setAttribute("data-theme",t);}catch(e){document.documentElement.setAttribute("data-theme","dark");}})();</script>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <link rel="stylesheet" href="../css/dark.css"/>
+  <link rel="stylesheet" href="../css/light.css"/>
+  <link rel="stylesheet" href="../css/animations.css"/>
+  <style>
+    .settings-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-3xl);
+      align-items: start;
+    }
+    @media (max-width: 1024px) { .settings-layout { grid-template-columns: 1fr; } }
+    .settings-card {
+      border-radius: var(--radius-xl);
+      padding: var(--space-xl) var(--space-2xl);
+      margin-bottom: var(--space-lg);
+    }
+    [data-theme="dark"] .settings-card { background: var(--bg-card); }
+    [data-theme="light"] .settings-card { background: var(--bg-card); box-shadow: var(--shadow-sm); }
+    .settings-card-title {
+      font-size: var(--text-base);
+      font-weight: 700;
+      margin-bottom: var(--space-lg);
+      padding-bottom: var(--space-md);
+      border-bottom: 1px solid var(--border-primary);
+    }
+    /* Star rating */
+    .star-rating { color: #f59e0b; letter-spacing: 2px; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <!-- Sidebar -->
+  <aside class="sidebar" role="navigation">
+    <div class="sidebar-logo">
+      <svg class="logo-icon" viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="16" fill="#3b82f6" opacity=".15"/>
+        <path d="M8 20c0-4.418 3.582-8 8-8s8 3.582 8 8" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="16" cy="12" r="3" fill="#3b82f6"/>
+        <path d="M10 24h12" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="logo-text"><span class="logo-aero">Aero</span>Sense</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="../index.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path stroke-linecap="round" d="M9 21V12h6v9"/></svg><span>Home</span></a>
+      <a href="radar.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg><span>Radar Map</span></a>
+      <a href="insights.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg><span>Insights</span></a>
+      <a href="alerts.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span>Alerts</span><span class="nav-badge alerts-badge">3</span></a>
+      <a href="settings.html" class="nav-item active" aria-current="page"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9"/></svg><span>Settings</span></a>
+    </nav>
+  </aside>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="search-bar">
+        <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Search city or place..." aria-label="Search"/>
+      </div>
+      <div class="topbar-actions">
+        <button class="topbar-btn topbar-theme-btn" aria-label="Toggle theme"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg></button>
+        <button class="topbar-btn" aria-label="Notifications"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span class="btn-badge">3</span></button>
+        <div class="avatar-btn">B</div>
+      </div>
+    </header>
+
+    <header class="mobile-topbar">
+      <div>
+        <div class="mt-logo"><span class="logo-aero">Aero</span>Sense</div>
+        <div style="font-size:var(--text-lg);font-weight:700;margin-top:2px">Settings</div>
+      </div>
+      <div class="mt-actions">
+        <button class="mt-btn topbar-theme-btn"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg></button>
+      </div>
+    </header>
+
+    <main class="page-content page-enter">
+      <div class="page-header">
+        <h1 class="page-title">Settings</h1>
+        <p class="page-subtitle">Customize your experience</p>
+      </div>
+
+      <div class="settings-layout">
+        <!-- LEFT column -->
+        <div>
+
+          <!-- Appearance -->
+          <div class="settings-card">
+            <div class="settings-card-title">Appearance</div>
+
+            <!-- Theme -->
+            <div class="settings-row">
+              <div class="sr-icon">🎨</div>
+              <div class="sr-body">
+                <div class="sr-label">Theme</div>
+                <div class="sr-sub">Choose your preferred theme</div>
+              </div>
+              <div class="sr-action">
+                <div class="theme-toggle">
+                  <button class="theme-toggle-btn active" data-theme="light">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/></svg>
+                    Light
+                  </button>
+                  <button class="theme-toggle-btn" data-theme="dark">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+                    Dark
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Full Screen Weather -->
+            <div class="settings-row">
+              <div class="sr-icon">⛅</div>
+              <div class="sr-body">
+                <div class="sr-label">Full Screen Weather</div>
+                <div class="sr-sub">Show immersive full screen weather view</div>
+              </div>
+              <div class="sr-action">
+                <label class="toggle-switch" aria-label="Toggle fullscreen weather">
+                  <input type="checkbox" id="pref-fullscreen"/>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Animations -->
+            <div class="settings-row">
+              <div class="sr-icon">✨</div>
+              <div class="sr-body">
+                <div class="sr-label">Dynamic Weather Animations</div>
+                <div class="sr-sub">Show animations based on current conditions</div>
+              </div>
+              <div class="sr-action">
+                <label class="toggle-switch" aria-label="Toggle animations">
+                  <input type="checkbox" id="pref-animations" checked/>
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Units -->
+          <div class="settings-card">
+            <div class="settings-card-title">Units</div>
+
+            <div class="settings-row">
+              <div class="sr-icon">🌡</div>
+              <div class="sr-body"><div class="sr-label">Temperature</div></div>
+              <div class="sr-action">
+                <div class="unit-toggle">
+                  <button class="unit-btn active" data-unit-group="temperature" data-unit="C">°C</button>
+                  <button class="unit-btn" data-unit-group="temperature" data-unit="F">°F</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="sr-icon">💨</div>
+              <div class="sr-body"><div class="sr-label">Wind Speed</div></div>
+              <div class="sr-action">
+                <div class="unit-toggle">
+                  <button class="unit-btn active" data-unit-group="wind" data-unit="kmh">km/h</button>
+                  <button class="unit-btn" data-unit-group="wind" data-unit="mph">mph</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="sr-icon">🔵</div>
+              <div class="sr-body"><div class="sr-label">Pressure</div></div>
+              <div class="sr-action">
+                <div class="unit-toggle">
+                  <button class="unit-btn active" data-unit-group="pressure" data-unit="hPa">hPa</button>
+                  <button class="unit-btn" data-unit-group="pressure" data-unit="inHg">inHg</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-row">
+              <div class="sr-icon">👁</div>
+              <div class="sr-body"><div class="sr-label">Distance &amp; Visibility</div></div>
+              <div class="sr-action">
+                <div class="unit-toggle">
+                  <button class="unit-btn active" data-unit-group="distance" data-unit="km">km</button>
+                  <button class="unit-btn" data-unit-group="distance" data-unit="mi">mi</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Preferences -->
+          <div class="settings-card">
+            <div class="settings-card-title">Preferences</div>
+
+            <div class="settings-row" id="pref-location-row" style="cursor:pointer">
+              <div class="sr-icon">📍</div>
+              <div class="sr-body">
+                <div class="sr-label">Default Location</div>
+              </div>
+              <div class="sr-action">
+                <span class="sr-value">Current Location</span>
+                <div class="sr-chevron"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+              </div>
+            </div>
+
+            <div class="settings-row" id="pref-frequency-row" style="cursor:pointer">
+              <div class="sr-icon">🔄</div>
+              <div class="sr-body">
+                <div class="sr-label">Update Frequency</div>
+              </div>
+              <div class="sr-action">
+                <span class="sr-value" id="pref-frequency-val">10 minutes</span>
+                <div class="sr-chevron"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+              </div>
+            </div>
+
+            <div class="settings-row" id="pref-language-row" style="cursor:pointer">
+              <div class="sr-icon">🌐</div>
+              <div class="sr-body">
+                <div class="sr-label">Language</div>
+              </div>
+              <div class="sr-action">
+                <span class="sr-value" id="pref-language-val">English</span>
+                <div class="sr-chevron"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /left col -->
+
+        <!-- RIGHT column -->
+        <div>
+
+          <!-- Data & Privacy -->
+          <div class="settings-card">
+            <div class="settings-card-title">Data &amp; Privacy</div>
+
+            <div class="settings-row" id="privacy-data-sources" style="cursor:pointer">
+              <div class="sr-icon">🌐</div>
+              <div class="sr-body"><div class="sr-label">Data Sources</div></div>
+              <div class="sr-action">
+                <span class="sr-value">View sources</span>
+                <div class="sr-chevron"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+              </div>
+            </div>
+
+            <div class="settings-row" id="privacy-permissions" style="cursor:pointer">
+              <div class="sr-icon">🔒</div>
+              <div class="sr-body"><div class="sr-label">Permissions</div></div>
+              <div class="sr-action">
+                <span class="sr-value">Manage</span>
+                <div class="sr-chevron"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+              </div>
+            </div>
+
+            <div class="settings-row" id="privacy-policy" style="cursor:pointer">
+              <div class="sr-icon">📄</div>
+              <div class="sr-body"><div class="sr-label">Privacy Policy</div></div>
+              <div class="sr-action">
+                <span class="sr-value">View</span>
+                <div class="sr-chevron"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+              </div>
+            </div>
+
+            <div class="settings-row" id="clear-data-row" style="cursor:pointer">
+              <div class="sr-icon">🗑</div>
+              <div class="sr-body"><div class="sr-label">Clear Cached Data</div><div class="sr-sub">Remove all stored weather data</div></div>
+              <div class="sr-action">
+                <button id="clear-data-btn" style="padding:6px 14px;border-radius:var(--radius-full);background:rgba(239,68,68,.1);color:#ef4444;font-size:var(--text-sm);font-weight:600">Clear</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- About -->
+          <div class="settings-card">
+            <div class="settings-card-title">About</div>
+
+            <div class="settings-row">
+              <div class="sr-icon">📱</div>
+              <div class="sr-body"><div class="sr-label">App Version</div></div>
+              <div class="sr-action">
+                <span style="font-size:var(--text-sm);opacity:.7" id="app-version">1.0.0</span>
+              </div>
+            </div>
+
+            <div class="settings-row" id="about-rate" style="cursor:pointer">
+              <div class="sr-icon">⭐</div>
+              <div class="sr-body"><div class="sr-label">Rate AeroSense</div></div>
+              <div class="sr-action">
+                <span class="star-rating">★★★★★</span>
+              </div>
+            </div>
+
+            <div class="settings-row" id="about-aerosense" style="cursor:pointer">
+              <div class="sr-icon">ℹ️</div>
+              <div class="sr-body"><div class="sr-label">About AeroSense</div></div>
+              <div class="sr-action">
+                <div class="sr-chevron"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- About card (brand) -->
+          <div class="about-card">
+            <div style="width:48px;height:48px;flex-shrink:0">
+              <svg viewBox="0 0 48 48" fill="none">
+                <circle cx="24" cy="24" r="24" fill="#3b82f6" opacity=".15"/>
+                <path d="M12 30c0-6.627 5.373-12 12-12s12 5.373 12 12" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+                <circle cx="24" cy="18" r="4.5" fill="#3b82f6"/>
+                <path d="M15 36h18" stroke="#3b82f6" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div style="flex:1">
+              <div style="font-weight:800;font-size:var(--text-lg)"><span style="color:var(--color-brand)">Aero</span>Sense</div>
+              <div style="font-size:var(--text-sm);opacity:.6;margin-bottom:8px">Environmental Intelligence</div>
+              <div style="font-size:var(--text-xs);opacity:.5;line-height:1.6">
+                Empowering you with accurate weather and air quality insights.
+              </div>
+              <div style="font-size:var(--text-xs);opacity:.4;margin-top:8px">© 2024 AeroSense. All rights reserved.</div>
+            </div>
+          </div>
+
+        </div><!-- /right col -->
+      </div>
+    </main>
+
+    <nav class="bottom-nav">
+      <a href="../index.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/></svg><span class="bn-label">Home</span></a>
+      <a href="radar.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49"/></svg><span class="bn-label">Radar</span></a>
+      <a href="insights.html" class="bottom-nav-item"><div class="bottom-nav-fab"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg></div><span class="bn-label" style="margin-top:4px">Insights</span></a>
+      <a href="alerts.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span class="bn-label">Alerts</span></a>
+      <a href="settings.html" class="bottom-nav-item active" aria-current="page"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9"/></svg><span class="bn-label">Settings</span></a>
+    </nav>
+  </div>
+</div>
+
+<script type="module" src="../js/settings.js"></script>
+<script type="module" src="../js/nav.js"></script>
+</body>
+</html>

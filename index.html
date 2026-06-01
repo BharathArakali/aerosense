@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="description" content="AeroSense – Environmental Intelligence Dashboard. Real-time weather, AQI, and environmental insights."/>
+  <meta name="theme-color" content="#0d1117"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="AeroSense"/>
+  <title>AeroSense – Environmental Intelligence</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png"/>
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png"/>
+
+  <!-- Theme init: read stored preference before CSS renders to avoid flash -->
+  <script>(function(){try{var s=JSON.parse(localStorage.getItem("aerosense_settings")||"{}");var t=s.theme||"dark";if(t==="system"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}document.documentElement.setAttribute("data-theme",t);}catch(e){document.documentElement.setAttribute("data-theme","dark");}})();</script>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/main.css"/>
+  <link rel="stylesheet" href="css/dark.css"/>
+  <link rel="stylesheet" href="css/light.css"/>
+  <link rel="stylesheet" href="css/animations.css"/>
+</head>
+<body>
+
+<!-- ========== LOADING OVERLAY ========== -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-logo"><span class="logo-aero">Aero</span>Sense</div>
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loading-text">Initializing...</div>
+</div>
+
+<!-- ========== ERROR MESSAGE ========== -->
+<div class="hidden" id="error-message" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;padding:32px;z-index:9998;"></div>
+
+<!-- ========== OFFLINE BANNER ========== -->
+<div class="offline-banner" id="offline-banner">
+  📡 Offline – Showing last available data
+</div>
+
+<!-- ========== FULLSCREEN WEATHER ========== -->
+<div class="fullscreen-weather" id="fullscreen-weather">
+  <div class="fs-bg sunny" id="fs-bg"></div>
+  <div class="weather-anim-container" id="fs-anim"></div>
+  <button class="fs-close" id="fs-close" aria-label="Close fullscreen">✕</button>
+  <div class="fs-content">
+    <div class="fs-location">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <span class="hero-location-name">–</span>
+    </div>
+    <div class="fs-temp hero-temp-val">–</div>
+    <div class="fs-condition hero-condition-text">–</div>
+    <div class="fs-feels hero-feels-val">–</div>
+    <div class="fs-metrics">
+      <div class="fs-metric"><div class="fsm-val hero-humidity">–</div><div class="fsm-label">Humidity</div></div>
+      <div class="fs-metric"><div class="fsm-val hero-wind">–</div><div class="fsm-label">Wind</div></div>
+      <div class="fs-metric"><div class="fsm-val hero-visibility">–</div><div class="fsm-label">Visibility</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== CITY SEARCH MODAL ========== -->
+<div class="city-search-modal" id="city-search-modal" role="dialog" aria-label="City search">
+  <div class="city-search-backdrop" id="city-search-backdrop"></div>
+  <div class="city-search-box">
+    <div class="city-search-input-wrap">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="city-search-input" placeholder="Search city or place..." autocomplete="off" autofocus/>
+    </div>
+    <div class="city-results" id="city-results">
+      <div style="padding:16px;text-align:center;opacity:.5;font-size:14px">Type to search for a city…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== APP SHELL ========== -->
+<div class="app-shell">
+
+  <!-- ---- DESKTOP SIDEBAR ---- -->
+  <aside class="sidebar" role="navigation" aria-label="Main navigation">
+    <div class="sidebar-logo">
+      <svg class="logo-icon" viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="16" fill="#3b82f6" opacity=".15"/>
+        <path d="M8 20c0-4.418 3.582-8 8-8s8 3.582 8 8" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="16" cy="12" r="3" fill="#3b82f6"/>
+        <path d="M10 24h12" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <span class="logo-text"><span class="logo-aero">Aero</span>Sense</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a href="index.html" class="nav-item active" aria-current="page">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path stroke-linecap="round" d="M9 21V12h6v9"/></svg>
+        <span>Home</span>
+      </a>
+      <a href="pages/radar.html" class="nav-item">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+        <span>Radar Map</span>
+      </a>
+      <a href="pages/insights.html" class="nav-item">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg>
+        <span>Insights</span>
+      </a>
+      <a href="pages/alerts.html" class="nav-item">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        <span>Alerts</span>
+        <span class="nav-badge alerts-badge">3</span>
+      </a>
+      <a href="pages/settings.html" class="nav-item">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <span>Settings</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- ---- MAIN CONTENT ---- -->
+  <div class="main-content">
+
+    <!-- Desktop Top Bar -->
+    <header class="topbar">
+      <div class="search-bar">
+        <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="topbar-search" placeholder="Search city or place..." autocomplete="off" aria-label="Search city"/>
+        <span class="search-shortcut">Ctrl K</span>
+        <button class="search-location-btn" aria-label="Use current location" id="location-refresh">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+        </button>
+      </div>
+
+      <div class="topbar-actions">
+        <!-- Theme toggle -->
+        <button class="topbar-btn topbar-theme-btn" aria-label="Toggle theme">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
+        <button class="topbar-btn" aria-label="Notifications">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+          <span class="btn-badge alerts-badge">3</span>
+        </button>
+        <div class="avatar-btn" aria-label="Profile">B</div>
+      </div>
+    </header>
+
+    <!-- Mobile Top Bar -->
+    <header class="mobile-topbar">
+      <div>
+        <div class="mt-logo"><span class="logo-aero">Aero</span>Sense</div>
+        <div class="mt-location">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+          <span class="hero-location-name">Locating...</span>
+          <span style="width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-left:4px;animation:pulse-dot 2s infinite"></span>
+          <span style="font-size:11px;color:var(--color-excellent)">Live</span>
+        </div>
+      </div>
+      <div class="mt-actions">
+        <button class="mt-btn topbar-theme-btn" aria-label="Toggle theme">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+        </button>
+        <button class="mt-btn" aria-label="Notifications">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+          <span class="btn-badge alerts-badge">3</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ====== PAGE CONTENT ====== -->
+    <main class="page-content page-enter" id="home-page">
+
+      <!-- Install prompt -->
+      <div class="install-prompt hidden" id="install-prompt">
+        <button class="ip-dismiss" id="install-dismiss" aria-label="Dismiss">✕</button>
+        <div class="ip-icon">☁️</div>
+        <div class="ip-body">
+          <div class="ip-title">Install AeroSense</div>
+          <div class="ip-sub">Add to your device for quick access</div>
+        </div>
+        <button class="ip-btn" id="install-btn">Install</button>
+      </div>
+
+      <!-- 2-column home grid -->
+      <div class="home-grid">
+
+        <!-- ===== LEFT COLUMN ===== -->
+        <div style="display:flex;flex-direction:column;gap:var(--space-2xl)">
+
+          <!-- Hero Weather Card -->
+          <section class="hero-card" aria-label="Current weather">
+            <div class="hero-card-bg sunny" id="hero-bg"></div>
+            <div class="hero-card-overlay"></div>
+            <div class="weather-anim-container" id="hero-anim-container"></div>
+
+            <!-- Fullscreen toggle -->
+            <button class="hero-fullscreen-btn fullscreen-toggle-btn" aria-label="Toggle fullscreen weather">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+              Full Screen
+            </button>
+
+            <div class="hero-card-content">
+              <!-- Live badge -->
+              <div class="hero-live-badge">
+                <span class="hero-live-dot"></span>
+                Live · <span id="last-updated" class="hero-updated">Updated just now</span>
+              </div>
+
+              <!-- Location -->
+              <div class="hero-location">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+                <span class="hero-location-name">Locating…</span>
+                <button id="location-refresh" aria-label="Refresh location" style="margin-left:4px;opacity:.7">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline stroke-linecap="round" points="1 4 1 10 7 10"/><path stroke-linecap="round" d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                </button>
+              </div>
+
+              <!-- Temperature -->
+              <div class="hero-temp hero-temp-val">–</div>
+
+              <!-- Condition -->
+              <div class="hero-condition">
+                <span class="hero-condition-text">–</span>
+                <span class="hero-condition-icon"></span>
+              </div>
+
+              <!-- Feels like -->
+              <div class="hero-feels hero-feels-val">–</div>
+
+              <!-- Quick metrics -->
+              <div class="hero-metrics-row">
+                <div class="hero-metric">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a2 2 0 012 2v10.5a4 4 0 11-4 0V4a2 2 0 012-2z"/></svg>
+                  <span>Humidity</span>
+                  <span class="metric-val hero-humidity">–</span>
+                </div>
+                <div class="hero-metric">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9.59 4.59A2 2 0 1111 8H2m10.59 11.41A2 2 0 1014 16H2m15.73-8.27A2.5 2.5 0 1119.5 12H2"/></svg>
+                  <span>Wind</span>
+                  <span class="metric-val hero-wind">–</span>
+                </div>
+                <div class="hero-metric">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 8v4l3 3"/></svg>
+                  <span>Pressure</span>
+                  <span class="metric-val hero-pressure">–</span>
+                </div>
+                <div class="hero-metric">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <span>Visibility</span>
+                  <span class="metric-val hero-visibility">–</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Metrics Grid (6 cards) -->
+          <section>
+            <div id="metrics-grid" class="metrics-grid">
+              <!-- Populated by JS -->
+              <div class="metric-card skeleton" style="height:100px"></div>
+              <div class="metric-card skeleton" style="height:100px"></div>
+              <div class="metric-card skeleton" style="height:100px"></div>
+              <div class="metric-card skeleton" style="height:100px"></div>
+              <div class="metric-card skeleton" style="height:100px"></div>
+              <div class="metric-card skeleton" style="height:100px"></div>
+            </div>
+          </section>
+
+          <!-- Today vs Normal -->
+          <section>
+            <div class="section-header">
+              <h2 class="section-title">Today vs Normal</h2>
+              <a href="pages/insights.html" class="view-all-btn">
+                View all
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+              </a>
+            </div>
+            <div class="today-normal-grid" id="today-vs-normal">
+              <div class="tn-item skeleton" style="height:100px"></div>
+              <div class="tn-item skeleton" style="height:100px"></div>
+              <div class="tn-item skeleton" style="height:100px"></div>
+              <div class="tn-item skeleton" style="height:100px"></div>
+            </div>
+          </section>
+
+          <!-- Hourly Forecast -->
+          <section>
+            <div class="section-header">
+              <h2 class="section-title">Hourly Forecast</h2>
+              <a href="pages/insights.html" class="view-all-btn">View all <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></a>
+            </div>
+            <div class="forecast-strip" id="hourly-forecast" role="list" aria-label="Hourly forecast">
+              <!-- Populated by JS -->
+            </div>
+          </section>
+
+          <!-- 7-Day Forecast -->
+          <section class="card">
+            <div class="section-header">
+              <h2 class="section-title">7-Day Forecast</h2>
+              <a href="pages/insights.html" class="view-all-btn">View all <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></a>
+            </div>
+            <div id="daily-forecast" role="list" aria-label="7-day forecast">
+              <!-- Populated by JS -->
+            </div>
+          </section>
+
+          <!-- Health Advisory (mobile) -->
+          <section class="health-advisory" aria-live="polite">
+            <div style="flex:1">
+              <div class="ha-badge">Moderate</div>
+              <div style="font-weight:600;margin-bottom:4px">Health Advisory</div>
+              <div class="ha-text">Loading health advisory…</div>
+            </div>
+            <div class="ha-illustration">😷</div>
+          </section>
+
+          <!-- Outdoor Recs -->
+          <section>
+            <h2 class="section-title mb-lg">Outdoor Recommendations</h2>
+            <div class="recs-grid" id="outdoor-recs">
+              <!-- Populated by JS -->
+            </div>
+          </section>
+
+        </div><!-- /left column -->
+
+        <!-- ===== RIGHT COLUMN (desktop) ===== -->
+        <aside style="display:flex;flex-direction:column;gap:var(--space-2xl)">
+
+          <!-- AQI Panel -->
+          <div class="card aqi-panel" id="aqi-panel">
+            <div style="opacity:.5;text-align:center;padding:32px">Loading AQI…</div>
+          </div>
+
+          <!-- AeroScore + Comfort Score (desktop right) -->
+          <div class="card" data-score="aero">
+            <div class="sc-label">AeroScore™</div>
+            <div class="sc-value hero-temp-val" style="color:#22c55e">–<span>/100</span></div>
+            <div class="sc-status" style="color:#22c55e">–</div>
+            <div class="sc-ring"></div>
+          </div>
+
+          <!-- Sunrise / Sunset -->
+          <div class="card sun-card">
+            <div class="section-header mb-md">
+              <h2 class="section-title">Sunrise &amp; Sunset</h2>
+            </div>
+            <div id="sun-arc"></div>
+            <div class="sun-times">
+              <div class="sun-time-item">
+                <div class="st-icon">🌅</div>
+                <div class="st-label">Sunrise</div>
+                <div class="st-time sunrise-time">–</div>
+              </div>
+              <div class="sun-time-item">
+                <div class="st-icon">🌇</div>
+                <div class="st-label">Sunset</div>
+                <div class="st-time sunset-time">–</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Air Quality Trend 7-day (right panel) -->
+          <div class="card">
+            <div class="section-header mb-md">
+              <h2 class="section-title" style="font-size:var(--text-base)">Air Quality Trend (7 Days)</h2>
+              <span style="font-size:var(--text-xs);font-weight:700;color:#eab308;padding:3px 8px;background:rgba(234,179,8,.15);border-radius:99px">78 Today</span>
+            </div>
+            <div class="chart-container" style="height:100px">
+              <canvas id="home-aqi-chart" aria-label="AQI trend chart"></canvas>
+            </div>
+          </div>
+
+          <!-- Saved Places -->
+          <div class="card">
+            <div class="section-header mb-md">
+              <h2 class="section-title">Saved Places</h2>
+              <a href="#" class="view-all-btn">View all <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></a>
+            </div>
+            <div class="saved-places-list" id="saved-places-list">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+        </aside><!-- /right column -->
+
+      </div><!-- /home-grid -->
+    </main>
+
+    <!-- Mobile Bottom Nav -->
+    <nav class="bottom-nav" role="navigation" aria-label="Bottom navigation">
+      <a href="index.html" class="bottom-nav-item active" aria-label="Home">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path stroke-linecap="round" d="M9 21V12h6v9"/></svg>
+        <span class="bn-label">Home</span>
+      </a>
+      <a href="pages/radar.html" class="bottom-nav-item" aria-label="Radar">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49"/></svg>
+        <span class="bn-label">Radar</span>
+      </a>
+      <a href="pages/insights.html" class="bottom-nav-item" aria-label="Insights" style="position:relative">
+        <div class="bottom-nav-fab">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg>
+        </div>
+        <span class="bn-label" style="margin-top:4px">Insights</span>
+      </a>
+      <a href="pages/alerts.html" class="bottom-nav-item" aria-label="Alerts">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        <span class="bn-label">Alerts</span>
+        <span class="bn-badge alerts-badge">3</span>
+      </a>
+      <a href="pages/settings.html" class="bottom-nav-item" aria-label="Settings">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9"/></svg>
+        <span class="bn-label">Settings</span>
+      </a>
+    </nav>
+
+  </div><!-- /main-content -->
+</div><!-- /app-shell -->
+
+<!-- ===== SCRIPTS ===== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script type="module" src="js/app.js"></script>
+<script>
+  // Service worker registration
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(reg => console.log('[AeroSense] SW registered:', reg.scope))
+        .catch(err => console.warn('[AeroSense] SW failed:', err));
+    });
+  }
+</script>
+
+<script>
+(function() {
+  function getSettings() {
+    try { return JSON.parse(localStorage.getItem("aerosense_settings") || "{}"); } catch(e) { return {}; }
+  }
+  function saveTheme(t) {
+    var s = getSettings();
+    s.theme = t;
+    localStorage.setItem("aerosense_settings", JSON.stringify(s));
+  }
+  document.querySelectorAll(".topbar-theme-btn").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      var cur = document.documentElement.getAttribute("data-theme");
+      var next = cur === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      saveTheme(next);
+      var meta = document.querySelector("meta[name=theme-color]");
+      if (meta) meta.setAttribute("content", next === "dark" ? "#0b0f1a" : "#eef2f8");
+    });
+  });
+})();
+</script>
+<script type="module" src="js/nav.js"></script>
+</body>
+</html>
