@@ -1403,22 +1403,26 @@ input, select, textarea { font-family: inherit; }
   display: none;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-lg) var(--space-xl);
+  padding: var(--space-md) var(--space-lg);
+  height: 56px;
   position: sticky;
   top: 0;
   z-index: 90;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 .mobile-topbar .mt-logo {
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
   font-weight: 800;
   letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .mobile-topbar .mt-logo .logo-aero { color: var(--color-brand); }
-.mobile-topbar .mt-actions { display: flex; align-items: center; gap: var(--space-sm); }
+.mobile-topbar .mt-actions { display: flex; align-items: center; gap: 4px; }
 .mobile-topbar .mt-btn {
-  width: 36px; height: 36px;
+  width: 40px; height: 40px;
   border-radius: var(--radius-full);
   display: flex; align-items: center; justify-content: center;
   position: relative;
@@ -1537,25 +1541,163 @@ input, select, textarea { font-family: inherit; }
 
 /* ---------- Responsive: Mobile ---------- */
 @media (max-width: 768px) {
+  /* ── Layout ── */
   .sidebar { display: none; }
   .main-content { margin-left: 0; }
   .topbar { display: none; }
   .mobile-topbar { display: flex; }
   .bottom-nav { display: flex; }
+
+  /* Prevent any child from causing horizontal scroll */
+  body, .main-content, .page-content { overflow-x: hidden; }
+
+  /* ── Safe-area / notch support ── */
+  .mobile-topbar {
+    padding-top: env(safe-area-inset-top, 0px);
+    height: calc(56px + env(safe-area-inset-top, 0px));
+  }
+  .bottom-nav {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* ── Page content — enough bottom padding for nav + safe area ── */
   .page-content {
-    padding: var(--space-lg) var(--space-lg) calc(var(--bottom-nav-height) + var(--space-xl));
+    padding: var(--space-md) var(--space-md)
+             calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px) + var(--space-2xl));
     max-width: 100%;
   }
+
+  /* ── Grids ── */
   .home-grid { grid-template-columns: 1fr; }
-  .desktop-grid-2 { grid-template-columns: 1fr; }
-  .desktop-grid-3 { grid-template-columns: 1fr; }
-  .metrics-grid { grid-template-columns: repeat(2, 1fr); }
-  .recs-grid { grid-template-columns: repeat(2, 1fr); }
-  .today-normal-grid { grid-template-columns: repeat(2, 1fr); }
-  .map-wrapper { height: 320px; }
+  .desktop-grid-2, .desktop-grid-3 { grid-template-columns: 1fr; }
+  .metrics-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-sm); }
+  .recs-grid { grid-template-columns: repeat(3, 1fr); gap: var(--space-sm); }
+  .today-normal-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-sm); }
+  .score-cards-row { grid-template-columns: repeat(2, 1fr) !important; gap: var(--space-sm); }
+
+  /* ── Map ── */
+  .map-wrapper { height: 300px; border-radius: var(--radius-lg); }
+
+  /* ── Hero card ── */
+  .hero-card { min-height: 230px; padding: var(--space-lg); }
+  .hero-temp { font-size: clamp(2.8rem, 14vw, 4rem); }
+  .hero-condition { font-size: var(--text-lg); }
+  .hero-metrics-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm) var(--space-md);
+    padding-top: var(--space-md);
+  }
+  .hero-fullscreen-btn { top: var(--space-md); right: var(--space-md); }
+
+  /* ── Score cards — shrink ring + padding for narrow screens ── */
+  .score-card {
+    padding: var(--space-md);
+    padding-right: calc(var(--space-md) + 52px);
+    padding-bottom: 40px;
+    min-height: 110px;
+  }
+  .score-card .sc-ring { width: 48px; height: 48px; top: var(--space-md); right: var(--space-sm); }
+  .score-card .sc-ring svg { width: 48px; height: 48px; }
+  .score-card .sc-value { font-size: var(--text-xl); }
+
+  /* ── Metric cards ── */
+  .metric-card { padding: var(--space-md); }
+  .metric-card .mc-value { font-size: var(--text-lg); }
+
+  /* ── Forecast ── */
+  .hourly-item { min-width: 64px; padding: var(--space-sm); }
+  .daily-item { padding: var(--space-md) var(--space-sm); }
+  .daily-item .di-day { width: 56px; font-size: var(--text-xs); }
+
+  /* ── Today-vs-Normal ── */
+  .tn-item { padding: var(--space-md); }
+  .tn-current { font-size: var(--text-xl); }
+
+  /* ── Outdoor recs — 3 cols so all 5 fit in 2 rows ── */
+  .rec-item { padding: var(--space-sm) var(--space-xs); }
+  .ri-name { font-size: var(--text-xs); }
+
+  /* ── Section headers ── */
+  .section-header { margin-bottom: var(--space-md); }
+  .page-title { font-size: var(--text-xl); }
+
+  /* ── Touch targets — minimum 44px ── */
+  .mt-btn, .bottom-nav-item, .layer-btn, .map-ctrl-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: var(--space-xs) 0;
+  }
+
+  /* ── Bottom nav FAB (Insights center button) ── */
+  .bottom-nav-fab {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    margin-top: -16px;
+  }
+
+  /* ── AQI gauge ── */
   .aqi-gauge-svg { width: 100px; height: 60px; }
-  .hero-temp { font-size: clamp(2.5rem, 10vw, 3.5rem); }
+
+  /* ── Cards — remove heavy box shadows on mobile (performance) ── */
+  .card, .metric-card, .score-card { box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+
+  /* ── Radar layout ── */
+  .radar-layout { grid-template-columns: 1fr !important; }
+
+  /* ── Insights grid ── */
+  .insights-grid { grid-template-columns: 1fr !important; }
+
+  /* ── Alert cards ── */
+  .alert-card .ac-main-row { gap: var(--space-sm); }
+  .alert-card .ac-icon-wrap { width: 36px; height: 36px; font-size: 1.1rem; }
+
+  /* ── Settings rows ── */
+  .settings-row { flex-wrap: wrap; gap: var(--space-sm); }
+
+  /* ── Saved places ── */
+  .saved-place-item { padding: var(--space-sm) var(--space-md); }
+
+  /* ── Overflow / cut-off hardening ──
+     Stops any wide child from forcing horizontal scroll or being clipped. */
+  html { overflow-x: hidden; max-width: 100%; }
+
+  /* Grid/flex children must be allowed to shrink below their content size,
+     otherwise long text or fixed-width kids blow the row out past the screen. */
+  .home-grid > *, .insights-grid > *, .radar-layout > *,
+  .settings-layout > *, .score-cards-row > *, .metrics-grid > *,
+  .today-normal-grid > *, .recs-grid > * { min-width: 0; }
+  .settings-row .sr-body, .mt-location, .di-body, .sr-action { min-width: 0; }
+
+  /* Charts must never exceed their container width. */
+  .chart-container, .chart-card { max-width: 100%; overflow: hidden; }
+  .chart-container canvas { max-width: 100% !important; }
+
+  /* Portal dropdowns (notifications / profile) are 320–340px wide and are
+     right-anchored by JS — cap them so they can't run off a narrow screen. */
+  .topbar-dropdown, .profile-dropdown,
+  #nav-alerts-dd, #nav-profile-dd { max-width: calc(100vw - 16px); }
+
+  /* Mobile topbar: keep logo + actions on one line without pushing off-screen. */
+  .mobile-topbar { gap: var(--space-sm); }
+  .mobile-topbar > div:first-child { min-width: 0; flex: 1; }
+  .mt-location .hero-location-name {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 45vw; display: inline-block; vertical-align: bottom;
+  }
+  .mt-actions { flex-shrink: 0; }
 }
+
 
 /* ---------- Responsive: Tablet ---------- */
 @media (min-width: 769px) and (max-width: 1024px) {
