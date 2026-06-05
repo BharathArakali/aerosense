@@ -1001,14 +1001,17 @@ input, select, textarea { font-family: inherit; }
   border-radius: var(--radius-full);
   border: 1.5px solid var(--border-primary);
 }
+/* Fixed width so every unit row's toggle lines up and matches dimensions */
+.unit-toggle { width: 132px; }
 .unit-btn {
-  padding: 5px 14px;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 6px 0;
   border-radius: var(--radius-full);
   font-size: var(--text-sm);
   font-weight: 600;
   transition: background var(--transition-fast), color var(--transition-fast);
   white-space: nowrap;
-  min-width: 44px;
   text-align: center;
 }
 .unit-btn.active  { background: var(--color-brand); color: #fff; }

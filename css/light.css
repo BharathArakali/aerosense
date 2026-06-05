@@ -262,10 +262,14 @@
 [data-theme="light"] .dropdown-item { border-color: #EEF2F7; }
 [data-theme="light"] .dropdown-item:hover { background: rgba(37,99,235,.05); }
 [data-theme="light"] .profile-header { border-color: #E5E7EB; }
-[data-theme="light"] .unit-toggle { background: #EEF2F7; border-color: #E2E8F0; }
-[data-theme="light"] .unit-btn:not(.active) { color: #64748B; }
-[data-theme="light"] .theme-toggle { background: #EEF2F7; border: 1.5px solid #E2E8F0; }
-[data-theme="light"] .theme-toggle-btn:not(.active) { color: #64748B; }
+[data-theme="light"] .unit-toggle { background: #E5EAF2; border-color: #C7D2E2; }
+[data-theme="light"] .unit-btn:not(.active) { color: #334155; }
+[data-theme="light"] .unit-btn.active { background: var(--color-brand) !important; color: #ffffff !important; }
+[data-theme="light"] .theme-toggle { background: #E5EAF2; border: 1.5px solid #C7D2E2; }
+[data-theme="light"] .theme-toggle-btn:not(.active) { color: #334155; }
+[data-theme="light"] .theme-toggle-btn.active { background: var(--color-brand) !important; color: #ffffff !important; }
+[data-theme="light"] .theme-toggle-btn.active svg,
+[data-theme="light"] .unit-btn.active { color: #ffffff !important; }
 [data-theme="light"] .nav-item:hover svg { color: var(--text-primary); }
 
 /* ── Map control buttons (light glassmorphism) ── */

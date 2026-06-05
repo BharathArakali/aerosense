@@ -103,39 +103,47 @@ function buildAlerts() {
     severity: 'upcoming',
   });
 
-  if (uvVal >= 7) {
+  // UV — always present so the UV tab has content; high UV is an active alert
+  {
+    const high = uvVal >= 7;
     allAlerts.push({
-      id: 'uv-upcoming',
+      id: high ? 'uv-active' : 'uv-info',
       type: 'uv',
       category: 'uv',
-      title: 'High UV Index',
-      desc: 'UV index may reach very high levels',
+      title: high ? 'High UV Index' : 'UV Index Normal',
+      desc: high
+        ? `UV index is high (${Math.round(uvVal)}) — limit midday sun exposure`
+        : `UV index is ${Math.round(uvVal)} — low risk outdoors`,
       icon: '☀️',
       iconBg: 'rgba(234,179,8,.15)',
       borderColor: '#eab308',
-      status: 'upcoming',
+      status: high ? 'active' : 'upcoming',
       badgeColor: '#eab308',
-      time: 'Tomorrow, 11:00 AM – 3:00 PM',
+      time: high ? 'Today, 11:00 AM – 3:00 PM' : 'Tomorrow, 11:00 AM – 3:00 PM',
       area: '',
       severity: 'uv',
     });
   }
 
-  if (aqiVal > 100) {
+  // AQI — always present so the Air Quality tab has content; severity tracks level
+  {
+    const poor = aqiVal > 100;
     allAlerts.push({
-      id: 'aqi-upcoming',
+      id: poor ? 'aqi-active' : 'aqi-info',
       type: 'aqi',
       category: 'aqi',
-      title: 'Poor Air Quality',
-      desc: 'AQI levels may become unhealthy',
+      title: poor ? 'Poor Air Quality' : 'Air Quality Update',
+      desc: poor
+        ? `AQI is ${aqiVal} — air may be unhealthy, limit outdoor activity`
+        : `AQI is ${aqiVal} — air quality is acceptable today`,
       icon: '🌫',
-      iconBg: 'rgba(239,68,68,.1)',
-      borderColor: '#ef4444',
-      status: 'upcoming',
-      badgeColor: '#ef4444',
-      time: 'Tomorrow, 8:00 AM – 6:00 PM',
+      iconBg: poor ? 'rgba(239,68,68,.1)' : 'rgba(34,197,94,.12)',
+      borderColor: poor ? '#ef4444' : '#22c55e',
+      status: poor ? 'active' : 'upcoming',
+      badgeColor: poor ? '#ef4444' : '#22c55e',
+      time: poor ? 'Today, 8:00 AM – 6:00 PM' : 'Tomorrow, 8:00 AM – 6:00 PM',
       area: '',
-      severity: 'active',
+      severity: 'aqi',
     });
   }
 
