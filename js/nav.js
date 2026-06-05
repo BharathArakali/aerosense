@@ -280,11 +280,30 @@
     }
   }
 
+  /* ── 6b. ALERTS BADGE (consistent across all pages) ───────── */
+  function updateAlertsBadge() {
+    const { weather, aqi } = getLiveData();
+    const aqiVal = aqi?.current?.aqi ?? 78;
+    const uv = weather?.current?.uvIndex ?? 8;
+    let count = 2; // rain + wind always active
+    if (uv >= 7) count++;
+    if (aqiVal > 100) count++;
+    const sig = 'c' + count;
+    let seen = null;
+    try { seen = localStorage.getItem('aerosense_alerts_seen_sig'); } catch (e) {}
+    const unseen = (seen === sig) ? 0 : count;
+    document.querySelectorAll('.alerts-badge').forEach(el => {
+      el.textContent = unseen;
+      el.style.display = unseen ? '' : 'none';
+    });
+  }
+
   /* ── 7. BOOT ─────────────────────────────────────────────── */
   function boot() {
     injectPNGLogo();
     setupThemeToggle();
     injectDropdowns();
+    updateAlertsBadge();
   }
 
   if (document.readyState === 'loading') {

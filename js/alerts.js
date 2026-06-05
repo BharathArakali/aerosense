@@ -320,10 +320,13 @@ function renderLocationSummary() {
 }
 
 function updateBadgeCount() {
+  // The user is on the Alerts page, so mark the current alerts as seen and
+  // clear the badge everywhere. It reappears only when a new alert arrives.
   const active = buildAlerts().filter(a => a.status === 'active').length;
+  try { localStorage.setItem('aerosense_alerts_seen_sig', 'c' + active); } catch (e) {}
   qsa('.alerts-badge').forEach(el => {
-    el.textContent = active;
-    el.style.display = active ? '' : 'none';
+    el.textContent = '0';
+    el.style.display = 'none';
   });
 }
 
@@ -336,6 +339,8 @@ async function requestNotificationPermission() {
   const perm = await Notification.requestPermission();
   if (perm === 'granted') {
     showTestNotification();
+  } else {
+    alert('Notifications are blocked. Enable them in your browser site settings to receive alerts.');
   }
 }
 
@@ -343,8 +348,8 @@ function showTestNotification() {
   if (Notification.permission !== 'granted') return;
   new Notification('AeroSense Alerts', {
     body: 'You will now receive weather and AQI alerts.',
-    icon: '/assets/icon-192.png',
-    badge: '/assets/icon-192.png',
+    icon: '../assets/icon-192.png',
+    badge: '../assets/icon-192.png',
   });
 }
 
@@ -383,4 +388,3 @@ if (document.readyState === 'loading') {
 } else {
   init();
 }
-                                                                                                                                       

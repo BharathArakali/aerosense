@@ -156,6 +156,7 @@ function renderAll() {
   renderMetricsGrid();
   renderAQIPanel();
   renderScores();
+  renderHomeAqiChart();
   renderTodayVsNormal();
   renderHourlyForecast();
   renderDailyForecast();
@@ -186,7 +187,10 @@ function renderHero() {
   qsa('.hero-condition-text').forEach(el => el.textContent = info.desc);
   qsa('.hero-condition-icon').forEach(el => el.textContent = info.icon);
   qsa('.hero-feels-val').forEach(el => el.textContent = `Feels like ${feelsVal}${tUnit}`);
-  qsa('.hero-location-name').forEach(el => el.textContent = locationName);
+  qsa('.hero-location-name').forEach(el => {
+    const t = el.querySelector('.hero-location-name-text');
+    if (t) t.textContent = locationName; else el.textContent = locationName;
+  });
   qsa('.hero-updated').forEach(el => el.textContent = `${timeAgo(current.timestamp)}`);
 
   // Metrics row in hero
@@ -347,8 +351,17 @@ function renderScores() {
   });
   const comfortInfo = getComfortLabel(comfortScore);
 
-  // Update all aero score elements
-  qsa('[data-score="aero"]').forEach(el => {
+  // Rich AeroScore card: big donut + factor breakdown + advice
+  renderAeroScoreCard(aeroScore, aeroInfo, {
+    aqi: aqiVal,
+    temp: current.temp,
+    humidity: current.humidity,
+    uv: current.uvIndex,
+    wind: current.windSpeed,
+  });
+
+  // Any legacy/simple aero cards (other pages) still get the basic ring
+  qsa('[data-score="aero"]:not(.aero-card)').forEach(el => {
     const valEl = el.querySelector('.sc-value');
     const statusEl = el.querySelector('.sc-status');
     const ringEl = el.querySelector('.sc-ring');
@@ -365,6 +378,165 @@ function renderScores() {
     if (statusEl) { statusEl.textContent = comfortInfo.label; statusEl.style.color = comfortInfo.color; }
     if (ringEl) buildGaugeRing(ringEl, comfortScore, 100, comfortInfo.color);
   });
+}
+
+// Quality color from a 0-100 sub-score
+function factorColor(q) {
+  if (q >= 75) return '#22c55e';
+  if (q >= 50) return '#eab308';
+  if (q >= 30) return '#f97316';
+  return '#ef4444';
+}
+
+// Build per-factor 0-100 quality scores from the same logic as calcAeroScore
+function aeroFactors({ aqi, temp, humidity, uv, wind }) {
+  const units = state.settings.units;
+  const aqiPenalty = aqi <= 50 ? 0 : aqi <= 100 ? 10 : aqi <= 150 ? 20 : aqi <= 200 ? 35 : 50;
+  const tempDev = Math.min(Math.abs(temp - 23) / 5, 3) * 5;
+  const humDev = humidity < 20 || humidity > 80 ? 15 : humidity < 30 || humidity > 70 ? 8 : humidity < 40 || humidity > 60 ? 3 : 0;
+  const uvPenalty = uv <= 2 ? 0 : uv <= 5 ? 3 : uv <= 7 ? 8 : uv <= 10 ? 15 : 22;
+  const windPenalty = wind < 10 ? 0 : wind < 20 ? 2 : wind < 40 ? 6 : wind < 60 ? 12 : 18;
+  return [
+    { key: 'aqi',      label: 'Air Quality', q: clampPct(100 - aqiPenalty * 2),   val: `${Math.round(aqi)} AQI` },
+    { key: 'temp',     label: 'Temperature', q: clampPct(100 - tempDev * 6.7),    val: `${convertTemp(temp, units.temperature)}${tempUnit(units.temperature)}` },
+    { key: 'humidity', label: 'Humidity',    q: clampPct(100 - humDev * 6.7),     val: `${Math.round(humidity)}%` },
+    { key: 'uv',       label: 'UV Index',    q: clampPct(100 - uvPenalty * 4.5),  val: `${Math.round(uv)}` },
+    { key: 'wind',     label: 'Wind',        q: clampPct(100 - windPenalty * 5.5),val: `${convertWind(wind, units.wind)} ${windUnit(units.wind)}` },
+  ];
+}
+function clampPct(n) { return Math.max(0, Math.min(100, Math.round(n))); }
+
+// Short advisory line based on the weakest factor
+function aeroAdvice(score, factors) {
+  const worst = [...factors].sort((a, b) => a.q - b.q)[0];
+  if (score >= 76) return 'Great conditions for outdoor activity.';
+  const map = {
+    aqi: 'Air quality is the main concern — limit prolonged outdoor exposure.',
+    temp: 'Temperature is less than ideal — dress accordingly and stay hydrated.',
+    humidity: 'Humidity is the main concern — it may feel uncomfortable outdoors.',
+    uv: 'UV is high — wear sunscreen and limit midday sun.',
+    wind: 'Winds are strong — take care with outdoor plans.',
+  };
+  return map[worst.key] || 'Conditions are mixed — check the factors below.';
+}
+
+function renderAeroScoreCard(score, info, metrics) {
+  const card = qs('.aero-card[data-score="aero"]');
+  if (!card) return;
+  const factors = aeroFactors(metrics);
+
+  const ringEl = card.querySelector('#aero-ring');
+  if (ringEl) ringEl.innerHTML = bigScoreRing(score, info.color);
+
+  const statusEl = card.querySelector('#aero-status');
+  if (statusEl) { statusEl.textContent = info.label; statusEl.style.color = info.color; }
+
+  const adviceEl = card.querySelector('#aero-advice');
+  if (adviceEl) adviceEl.textContent = aeroAdvice(score, factors);
+
+  const factorsEl = card.querySelector('#aero-factors');
+  if (factorsEl) {
+    factorsEl.innerHTML = factors.map(f => {
+      const c = factorColor(f.q);
+      return `
+        <div class="aero-factor">
+          <span class="af-label">${f.label}</span>
+          <span class="af-bar"><span class="af-bar-fill" style="width:${f.q}%;background:${c}"></span></span>
+          <span class="af-val">${f.val}</span>
+        </div>`;
+    }).join('');
+  }
+}
+
+// Big donut with the score number centered inside
+function bigScoreRing(score, color) {
+  const size = 132, r = 56, cx = 66, cy = 66, sw = 11;
+  const circ = 2 * Math.PI * r;
+  const off = circ * (1 - Math.max(0, Math.min(1, score / 100)));
+  return `
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="AeroScore ${score} of 100">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(128,128,128,.16)" stroke-width="${sw}"/>
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}"
+        stroke-dasharray="${circ}" stroke-dashoffset="${off}" stroke-linecap="round"
+        transform="rotate(-90 ${cx} ${cy})" style="transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)"/>
+      <text x="${cx}" y="${cy - 2}" text-anchor="middle" dominant-baseline="middle"
+        style="font-size:34px;font-weight:800;fill:var(--text-primary)">${score}</text>
+      <text x="${cx}" y="${cy + 22}" text-anchor="middle" dominant-baseline="middle"
+        style="font-size:12px;font-weight:600;fill:var(--text-secondary)">/ 100</text>
+    </svg>`;
+}
+
+// ---- Home 7-day AQI trend chart ----
+let homeAqiChart = null;
+function renderHomeAqiChart() {
+  const canvas = el('home-aqi-chart');
+  if (!canvas || typeof window.Chart === 'undefined') return;
+
+  const curAqi = state.aqi?.current?.aqi ?? 78;
+
+  // Update the "today" badge in the card header
+  const todayBadge = el('home-aqi-today');
+  if (todayBadge) {
+    const info = getAQILabel(curAqi);
+    todayBadge.textContent = `${Math.round(curAqi)} Today`;
+    todayBadge.style.color = info.color;
+    todayBadge.style.background = hexToRgba(info.color, 0.15);
+  }
+
+  // Build a 7-day series from stored history; fall back to synthesized values
+  const history = Storage.getHistory();
+  const byDay = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toDateString();
+    const rec = [...history].reverse().find(h => h.date === key && typeof h.aqi === 'number');
+    byDay.push({
+      label: d.toLocaleDateString(undefined, { weekday: 'short' }),
+      aqi: rec ? Math.round(rec.aqi) : null,
+    });
+  }
+  // Today is always the live value
+  byDay[6].aqi = Math.round(curAqi);
+  // Fill any gaps with a gentle synthesized trend around the current value
+  for (let i = 0; i < 7; i++) {
+    if (byDay[i].aqi == null) {
+      const wobble = Math.round((Math.sin(i * 1.3) * 0.12 + (i - 3) * 0.02) * curAqi);
+      byDay[i].aqi = Math.max(5, Math.round(curAqi + wobble));
+    }
+  }
+
+  const colors = byDay.map(d => getAQILabel(d.aqi).color);
+  if (homeAqiChart) { homeAqiChart.destroy(); homeAqiChart = null; }
+  homeAqiChart = new window.Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: byDay.map(d => d.label),
+      datasets: [{
+        data: byDay.map(d => d.aqi),
+        backgroundColor: colors,
+        borderRadius: 6,
+        borderSkipped: false,
+        maxBarThickness: 22,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `AQI ${c.parsed.y}` } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: 'rgba(128,128,128,.7)', font: { size: 10 } } },
+        y: { display: false, beginAtZero: true, suggestedMax: Math.max(120, curAqi + 30) },
+      },
+      animation: { duration: 600 },
+    },
+  });
+}
+
+function hexToRgba(hex, a) {
+  const h = hex.replace('#', '');
+  const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
 // ---- Today vs Normal ----
@@ -597,11 +769,25 @@ function renderSavedPlaces() {
 }
 
 // ---- Alerts count badge ----
+// Active alerts = rain + wind (always) + high UV + poor AQI. The badge clears
+// once the user opens the Alerts page (a "seen" signature is stored there).
+function activeAlertCount() {
+  const aqiVal = state.aqi?.current?.aqi ?? 78;
+  const uv = state.weather?.current?.uvIndex ?? 8;
+  let count = 2; // rain + wind
+  if (uv >= 7) count++;
+  if (aqiVal > 100) count++;
+  return count;
+}
 function updateAlertsCount() {
-  const count = 3; // derived from real alerts in production
+  const count = activeAlertCount();
+  const sig = 'c' + count;
+  let seen = null;
+  try { seen = localStorage.getItem('aerosense_alerts_seen_sig'); } catch (e) {}
+  const unseen = (seen === sig) ? 0 : count;
   qsa('.alerts-badge').forEach(el => {
-    el.textContent = count;
-    el.style.display = count ? '' : 'none';
+    el.textContent = unseen;
+    el.style.display = unseen ? '' : 'none';
   });
 }
 
@@ -946,6 +1132,16 @@ function setupEventListeners() {
       Storage.dismissInstall();
       const prompt = el('install-prompt');
       if (prompt) prompt.classList.add('hidden');
+    });
+  }
+
+  // Change location (open city search) from the home hero
+  const heroLocChange = el('hero-location-change');
+  if (heroLocChange) {
+    heroLocChange.addEventListener('click', () => {
+      showCitySearch();
+      const cityInput = el('city-search-input');
+      if (cityInput) { cityInput.value = ''; cityInput.focus(); }
     });
   }
 
