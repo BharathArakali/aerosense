@@ -29,8 +29,115 @@
       border-radius: var(--radius-xl);
       padding: var(--space-xl);
     }
-    [data-theme="dark"] .location-mini-card { background: var(--bg-card); }
+    [data-theme="dark"]  .location-mini-card { background: var(--bg-card); }
     [data-theme="light"] .location-mini-card { background: var(--bg-card); box-shadow: var(--shadow-sm); }
+
+    /* ── Notification status banner ── */
+    .notif-status-banner {
+      display: none;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: 10px var(--space-lg);
+      border-radius: var(--radius-lg);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      margin-bottom: var(--space-lg);
+      line-height: 1.4;
+    }
+    .notif-granted { background: rgba(34,197,94,.12);  color: #22c55e; }
+    .notif-denied  { background: rgba(239,68,68,.12);  color: #ef4444; }
+
+    /* ── Alert Detail Modal ── */
+    .alert-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 8000;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity .25s;
+    }
+    .alert-modal-overlay.open { opacity: 1; }
+    @media (min-width: 600px) {
+      .alert-modal-overlay { align-items: center; padding: var(--space-xl); }
+    }
+
+    .alert-modal-box {
+      background: var(--bg-card);
+      border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+      width: 100%;
+      max-width: 540px;
+      max-height: 92vh;
+      overflow-y: auto;
+      position: relative;
+      transform: translateY(40px);
+      opacity: 0;
+      transition: transform .3s cubic-bezier(.34,1.2,.64,1), opacity .25s;
+    }
+    .alert-modal-overlay.open .alert-modal-box {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    @media (min-width: 600px) {
+      .alert-modal-box {
+        border-radius: var(--radius-2xl);
+        transform: scale(.96) translateY(0);
+        max-height: 86vh;
+      }
+      .alert-modal-overlay.open .alert-modal-box { transform: scale(1); }
+    }
+
+    .alert-modal-close {
+      position: absolute;
+      top: var(--space-md);
+      right: var(--space-md);
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--bg-input);
+      border: none;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .9rem;
+      cursor: pointer;
+      z-index: 1;
+      color: var(--text-primary);
+      transition: background var(--transition-fast);
+    }
+    .alert-modal-close:hover { background: var(--color-border); }
+
+    .alert-modal-hdr {
+      padding: var(--space-2xl) var(--space-2xl) var(--space-xl);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .alert-modal-body {
+      padding: var(--space-xl) var(--space-2xl) var(--space-2xl);
+    }
+
+    .alert-modal-actions {
+      list-style: none;
+      padding: 0; margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .alert-modal-actions li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: var(--text-sm);
+      padding: 5px 0;
+      line-height: 1.5;
+    }
+    .alert-modal-actions li::before {
+      content: '✓';
+      color: var(--color-brand);
+      font-weight: 800;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
   </style>
 </head>
 <body>
@@ -70,7 +177,7 @@
       </div>
       <div class="mt-actions">
         <button class="mt-btn topbar-theme-btn" aria-label="Toggle theme"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg></button>
-        <button class="mt-btn" id="enable-notifications" aria-label="Enable notifications"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg></button>
+        <button class="mt-btn notif-btn" aria-label="Enable notifications"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg></button>
       </div>
     </header>
 
@@ -79,10 +186,13 @@
         <div>
           <h1 class="page-title">Alerts</h1>
         </div>
-        <button class="view-all-btn" id="enable-notifications" style="padding:8px 16px;border-radius:var(--radius-full);background:rgba(59,130,246,.1);color:var(--color-brand);font-weight:600;font-size:var(--text-sm)">
+        <button class="notif-btn" style="padding:8px 16px;border-radius:var(--radius-full);background:rgba(59,130,246,.1);color:var(--color-brand);font-weight:600;font-size:var(--text-sm);cursor:pointer;border:none">
           🔔 Enable Notifications
         </button>
       </div>
+
+      <!-- Notification permission status (populated by JS) -->
+      <div id="notif-status-banner" class="notif-status-banner"></div>
 
       <!-- Filter tabs -->
       <div class="tab-bar" role="tablist">
@@ -213,7 +323,7 @@
       <a href="../index.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/></svg><span class="bn-label">Home</span></a>
       <a href="radar.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49"/></svg><span class="bn-label">Radar</span></a>
       <a href="insights.html" class="bottom-nav-item"><div class="bottom-nav-fab"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg></div><span class="bn-label" style="margin-top:4px">Insights</span></a>
-      <a href="alerts.html" class="bottom-nav-item active" aria-current="page"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span class="bn-label">Alerts</span><span class="bn-badge">3</span></a>
+      <a href="alerts.html" class="bottom-nav-item active" aria-current="page"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span class="bn-label">Alerts</span><span class="bn-badge alerts-badge">3</span></a>
       <a href="settings.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg><span class="bn-label">Settings</span></a>
     </nav>
   </div>

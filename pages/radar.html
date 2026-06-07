@@ -25,6 +25,7 @@
       align-items: start;
     }
     @media (max-width: 1024px) { .radar-layout { grid-template-columns: 1fr; } }
+
     .map-wrapper {
       height: 520px;
       border-radius: var(--radius-xl);
@@ -33,6 +34,7 @@
     }
     @media (max-width: 768px) { .map-wrapper { height: 340px; } }
     #map { width: 100%; height: 100%; }
+
     .map-fab {
       position: absolute;
       top: var(--space-lg);
@@ -50,17 +52,31 @@
       cursor: pointer;
       transition: background var(--transition-fast);
     }
+
     .layer-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: var(--space-lg); }
     .layer-btn {
       display: flex; align-items: center; gap: 6px;
       padding: 7px 14px;
       border-radius: var(--radius-full);
       font-size: var(--text-sm); font-weight: 600;
+      cursor: pointer;
       transition: background var(--transition-fast), color var(--transition-fast);
     }
-    [data-theme="dark"] .layer-btn.active,
+    [data-theme="dark"]  .layer-btn.active,
     [data-theme="light"] .layer-btn.active { background: var(--color-brand) !important; color: #fff !important; }
-    /* Make sure Leaflet tiles are visible above overflow:hidden clip */
+
+    /* Info-panel row separators */
+    .info-row {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--color-border);
+      gap: var(--space-md);
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-row-label { font-size: var(--text-sm); opacity: .6; white-space: nowrap; }
+    .info-row-value { font-weight: 600; font-size: var(--text-sm); text-align: right; }
+
+    /* Leaflet tiles visible above overflow:hidden clip */
     .leaflet-container { border-radius: 0; }
   </style>
 </head>
@@ -87,7 +103,7 @@
     <header class="topbar">
       <div class="search-bar">
         <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" placeholder="Search city or place..." aria-label="Search city"/>
+        <input type="text" placeholder="Search city or place…" aria-label="Search city"/>
       </div>
       <div class="topbar-actions">
         <button class="topbar-btn topbar-theme-btn" aria-label="Toggle theme">
@@ -116,67 +132,71 @@
 
       <!-- Layer tabs -->
       <div class="layer-tabs" role="tablist">
-        <button class="layer-btn active" data-layer="rain" role="tab">💧 Rain</button>
-        <button class="layer-btn" data-layer="clouds" role="tab">☁️ Clouds</button>
-        <button class="layer-btn" data-layer="wind" role="tab">💨 Wind</button>
-        <button class="layer-btn" data-layer="aqi" role="tab">🌿 AQI</button>
-        <button class="layer-btn" data-layer="temp" role="tab">🌡 Temperature</button>
+        <button class="layer-btn active" data-layer="rain"   role="tab">💧 Rain</button>
+        <button class="layer-btn"        data-layer="clouds" role="tab">☁️ Clouds</button>
+        <button class="layer-btn"        data-layer="wind"   role="tab">💨 Wind</button>
+        <button class="layer-btn"        data-layer="aqi"    role="tab">🌿 AQI</button>
+        <button class="layer-btn"        data-layer="temp"   role="tab">🌡 Temperature</button>
       </div>
 
       <div class="radar-layout">
-        <!-- Map + controls -->
+        <!-- Map + timeline (left/main column) -->
         <div style="display:flex;flex-direction:column;gap:var(--space-md)">
           <div class="map-wrapper">
             <div id="map"></div>
             <div class="map-fab">
               <button class="map-ctrl-btn" id="map-recenter" title="My location">◎</button>
-              <button class="map-ctrl-btn" id="zoom-in" title="Zoom in">+</button>
-              <button class="map-ctrl-btn" id="zoom-out" title="Zoom out">−</button>
+              <button class="map-ctrl-btn" id="zoom-in"      title="Zoom in">+</button>
+              <button class="map-ctrl-btn" id="zoom-out"     title="Zoom out">−</button>
             </div>
           </div>
 
-          <!-- Timeline slider -->
-          <div class="timeline-slider-wrap">
+          <!-- Timeline (under map, mobile primary) -->
+          <div class="timeline-slider-wrap card">
             <div class="timeline-top">
               <span class="timeline-time" id="timeline-time">Now</span>
               <button class="timeline-now-btn hidden" id="timeline-now-btn">Now</button>
             </div>
-            <input type="range" class="timeline-slider" id="timeline-slider" min="0" max="4" step="1" value="2" aria-label="Timeline"/>
-            <div class="timeline-labels">
-              <span>-2h</span><span>-1h</span><span>Now</span><span>+1h</span><span>+2h</span>
+            <input type="range" class="timeline-slider" id="timeline-slider"
+                   min="0" max="4" step="1" value="2" aria-label="Timeline"/>
+            <div class="timeline-labels" id="timeline-labels-1">
+              <span>−2h</span><span>−1h</span><span>Now</span><span>+1h</span><span>+2h</span>
             </div>
           </div>
         </div>
 
-        <!-- Right sidebar (desktop) -->
+        <!-- Right sidebar (desktop only) -->
         <aside style="display:flex;flex-direction:column;gap:var(--space-lg)">
-          <!-- Rain info -->
+
+          <!-- Dynamic layer info card -->
           <div class="card">
-            <div style="font-weight:700;margin-bottom:8px">Rain in your area</div>
-            <div id="rain-info">
-              <div style="opacity:.6;font-size:var(--text-sm)">Loading…</div>
+            <div style="font-weight:700;margin-bottom:10px" id="info-panel-title">Rain in Your Area</div>
+            <div id="info-panel-body">
+              <div style="opacity:.5;font-size:var(--text-sm)">Loading…</div>
             </div>
           </div>
 
-          <!-- Rain intensity legend -->
+          <!-- Dynamic legend card -->
           <div class="card">
-            <div style="font-weight:700;margin-bottom:12px">Rain Intensity</div>
-            <div class="rain-intensity-bar"></div>
-            <div style="display:flex;justify-content:space-between;font-size:var(--text-xs);opacity:.5;margin-top:6px">
+            <div style="font-weight:700;margin-bottom:12px" id="legend-title">Rain Intensity</div>
+            <div class="rain-intensity-bar" id="legend-bar"></div>
+            <div style="display:flex;justify-content:space-between;font-size:var(--text-xs);opacity:.5;margin-top:6px"
+                 id="legend-labels">
               <span>Light</span><span>Moderate</span><span>Heavy</span>
             </div>
           </div>
 
-          <!-- Timeline right panel -->
+          <!-- Timeline mirror (desktop right panel) -->
           <div class="card">
             <div style="font-weight:700;margin-bottom:12px">Timeline</div>
-            <div class="timeline-top mb-md">
+            <div class="timeline-top">
               <span class="timeline-time" id="timeline-time-2">Now</span>
-              <button class="timeline-now-btn" id="timeline-now-btn-2">▶ Now</button>
+              <button class="timeline-now-btn hidden" id="timeline-now-btn-2">▶ Now</button>
             </div>
-            <input type="range" class="timeline-slider" id="timeline-slider-2" min="0" max="4" step="1" value="2" aria-label="Timeline"/>
+            <input type="range" class="timeline-slider" id="timeline-slider-2"
+                   min="0" max="4" step="1" value="2" aria-label="Timeline"/>
             <div class="timeline-labels">
-              <span>-2h</span><span>-1h</span><span>Now</span><span>+1h</span><span>+2h</span>
+              <span>−2h</span><span>−1h</span><span>Now</span><span>+1h</span><span>+2h</span>
             </div>
           </div>
 
@@ -186,6 +206,7 @@
             <div class="sc-value" style="color:#22c55e">–<span>/100</span></div>
             <div class="sc-status" style="color:#22c55e">Loading…</div>
           </div>
+
         </aside>
       </div>
     </main>
@@ -196,158 +217,708 @@
       <a href="radar.html" class="bottom-nav-item active"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49"/></svg><span class="bn-label">Radar</span></a>
       <a href="insights.html" class="bottom-nav-item"><div class="bottom-nav-fab"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg></div><span class="bn-label" style="margin-top:4px">Insights</span></a>
       <a href="alerts.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span class="bn-label">Alerts</span></a>
-      <a href="settings.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg><span class="bn-label">Settings</span></a>
+      <a href="settings.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="bn-label">Settings</span></a>
     </nav>
   </div>
 </div>
 
-<!-- Leaflet -->
+<!-- Leaflet (synchronous so it's available to the inline script below) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
 <script>
 /* ============================================================
-   AeroSense Radar — self-contained (no ES modules)
-   Runs after Leaflet CDN is loaded synchronously above.
-============================================================ */
+   AeroSense Radar – self-contained IIFE (no ES modules)
+   All 5 layers: Rain (RainViewer), Clouds, Wind, AQI, Temperature.
+   Data sources: RainViewer API (rain tiles) + Open-Meteo (others).
+   ============================================================ */
 (function () {
   'use strict';
 
-  // ── Helpers ─────────────────────────────────────────────────
-  function getCached(key) {
-    try {
-      var raw = localStorage.getItem('aerosense_' + key);
-      return raw ? JSON.parse(raw) : null;
-    } catch (e) { return null; }
-  }
-
-  // ── State ────────────────────────────────────────────────────
+  // ── State ────────────────────────────────────────────────────────
   var map = null;
-  var activeOverlay = null;
-  var currentLayer = 'rain';
-  var lat = 12.9716, lon = 77.5946;
+  var activeTileLayer  = null;   // RainViewer tile overlay
+  var activeCircleLayer = null;  // L.circle overlay for non-rain layers
+  var extraMarkers     = [];     // badge/arrow markers; cleared on layer switch
+  var currentLayer     = 'rain';
+  var timelinePos      = 2;     // 0=−2h  1=−1h  2=Now  3=+1h  4=+2h
+
+  var lat     = 12.9716;
+  var lon     = 77.5946;
   var locName = 'Your Location';
 
-  var loc = getCached('location');
-  if (loc && loc.lat) { lat = loc.lat; lon = loc.lon; locName = loc.name || locName; }
+  var weatherHourly = [];  // Open-Meteo hourly records
+  var aqiHourly     = [];  // Open-Meteo AQI hourly records
+  // 5-slot array of RainViewer frames mapped to slider positions 0–4
+  var rainFrames = [null, null, null, null, null];
+  var rvHost     = 'tilecache.rainviewer.com';
 
-  // ── Layer configs (free/public endpoints only) ───────────────
-  var LAYERS = {
-    rain:   { url: 'https://tilecache.rainviewer.com/v2/coverage/0/256/{z}/{x}/{y}/2/1_1.png', opacity: 0.65 },
-    clouds: { url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', opacity: 0.0 }, // OSM base (no cloud overlay without API)
-    wind:   { url: null },
-    aqi:    { url: null },
-    temp:   { url: null },
+  // ── Layer metadata ───────────────────────────────────────────────
+  var LAYER_META = {
+    rain: {
+      infoTitle:    'Rain in Your Area',
+      legendTitle:  'Rain Intensity',
+      legendGrad:   'linear-gradient(to right,#d1fae5,#34d399,#3b82f6,#8b5cf6,#9333ea)',
+      legendLabels: ['Drizzle','Light','Moderate','Heavy','Extreme'],
+    },
+    clouds: {
+      infoTitle:    'Cloud Coverage',
+      legendTitle:  'Cloud Cover',
+      legendGrad:   'linear-gradient(to right,rgba(200,215,240,.15),rgba(160,170,190,.55),rgba(80,90,110,.9))',
+      legendLabels: ['Clear','Scattered','Broken','Overcast'],
+    },
+    wind: {
+      infoTitle:    'Wind Conditions',
+      legendTitle:  'Wind Speed',
+      legendGrad:   'linear-gradient(to right,#22c55e,#84cc16,#f59e0b,#f97316,#ef4444)',
+      legendLabels: ['Calm','Breeze','Moderate','Strong','Severe'],
+    },
+    aqi: {
+      infoTitle:    'Air Quality Index',
+      legendTitle:  'AQI Scale',
+      legendGrad:   'linear-gradient(to right,#22c55e,#84cc16,#f59e0b,#f97316,#ef4444,#9333ea)',
+      legendLabels: ['Good','Moderate','Unhealthy','Very Unhealthy','Hazardous'],
+    },
+    temp: {
+      infoTitle:    'Temperature',
+      legendTitle:  'Temperature Scale',
+      legendGrad:   'linear-gradient(to right,#3b82f6,#22c55e,#f59e0b,#ef4444)',
+      legendLabels: ['Cold','Cool','Warm','Hot'],
+    },
   };
 
-  // ── Init map ─────────────────────────────────────────────────
+  // ── localStorage helper ──────────────────────────────────────────
+  function get(key) {
+    try { return JSON.parse(localStorage.getItem('aerosense_' + key)); }
+    catch (e) { return null; }
+  }
+
+  // ── Zero-pad helper ──────────────────────────────────────────────
+  function pad(n) { return n < 10 ? '0' + n : String(n); }
+
+  // ── Boot ─────────────────────────────────────────────────────────
+  function boot() {
+    var loc = get('location');
+    if (loc && loc.lat) { lat = loc.lat; lon = loc.lon; locName = loc.name || locName; }
+
+    setupLayerButtons();
+    setupMapControls();
+    setupTimeline();
+    initMap();
+    loadData();
+    updateSidebarAeroScore();
+  }
+
+  // ── Map initialisation ───────────────────────────────────────────
   function initMap() {
-    var mapEl = document.getElementById('map');
-    if (!mapEl) return;
+    var el = document.getElementById('map');
+    if (!el) return;
 
-    // Set explicit height — Leaflet needs pixel dimensions
-    var wrapper = mapEl.parentElement;
-    var wh = wrapper ? wrapper.offsetHeight : 0;
-    var targetH = wh > 20 ? wh : (window.innerWidth <= 768 ? 340 : 520);
-    mapEl.style.height = targetH + 'px';
-    mapEl.style.width  = '100%';
+    // Give Leaflet an explicit pixel height (height:100% needs a resolved parent)
+    var wrap = el.parentElement;
+    var wrapH = wrap ? wrap.offsetHeight : 0;
+    var fallbackH = window.innerWidth <= 768 ? 340 : 520;
+    el.style.height = (wrapH > 20 ? wrapH : fallbackH) + 'px';
+    el.style.width  = '100%';
 
-    var isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-    var tileUrl = isDark
-      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-
+    var dark = document.documentElement.getAttribute('data-theme') !== 'light';
     map = L.map('map', {
       center:           [lat, lon],
-      zoom:             10,
+      zoom:             8,
       zoomControl:      false,
       attributionControl: true,
       tap:              false,
       preferCanvas:     true,
     });
 
-    // Base tiles
-    L.tileLayer(tileUrl, {
-      subdomains:  'abcd',
-      maxZoom:     19,
-      attribution: '&copy; <a href="https://openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com">CARTO</a>',
-    }).addTo(map);
+    L.tileLayer(
+      dark
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+      {
+        subdomains:  'abcd',
+        maxZoom:     19,
+        attribution: '&copy; <a href="https://osm.org/copyright">OSM</a> &copy; <a href="https://carto.com">CARTO</a>',
+      }
+    ).addTo(map);
 
-    // Location dot
+    // Pulsing location dot
     var dotIcon = L.divIcon({
       className: '',
-      html: '<div style="width:14px;height:14px;border-radius:50%;background:#3b82f6;border:2.5px solid #fff;box-shadow:0 0 0 5px rgba(59,130,246,.3)"></div>',
-      iconSize: [14, 14], iconAnchor: [7, 7],
+      html: '<div style="width:14px;height:14px;border-radius:50%;background:#3b82f6;' +
+            'border:2.5px solid #fff;box-shadow:0 0 0 5px rgba(59,130,246,.25)"></div>',
+      iconSize:   [14, 14],
+      iconAnchor: [7,  7],
     });
     L.marker([lat, lon], { icon: dotIcon }).addTo(map)
       .bindPopup('<b>' + locName + '</b>');
 
-    // Force size recalc after browser has painted
+    // Allow browser to paint first, then recalculate map size
     setTimeout(function () { if (map) map.invalidateSize(); }, 100);
-    setTimeout(function () { if (map) map.invalidateSize(); }, 500);
+    setTimeout(function () { if (map) map.invalidateSize(); }, 600);
 
-    // Default overlay
-    setOverlay('rain');
-    updateSidebar();
+    // Default layer
+    setLayer('rain');
   }
 
-  // ── Overlay layers ───────────────────────────────────────────
-  function setOverlay(key) {
-    if (activeOverlay && map) { map.removeLayer(activeOverlay); activeOverlay = null; }
-    currentLayer = key;
-    var cfg = LAYERS[key];
-    if (!cfg || !cfg.url) { return; }
-    activeOverlay = L.tileLayer(cfg.url, {
-      opacity:      cfg.opacity,
-      subdomains:   'abcd',
-      errorTileUrl: '',
-    });
-    activeOverlay.on('tileerror', function () {});
-    if (map) activeOverlay.addTo(map);
+  // ── Data loading ─────────────────────────────────────────────────
+  function loadData() {
+    loadRainFrames();
+    loadWeatherHourly();
+    loadAQIHourly();
   }
 
-  // ── Layer tab buttons ────────────────────────────────────────
-  function setupLayerButtons() {
-    document.querySelectorAll('.layer-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        document.querySelectorAll('.layer-btn').forEach(function (b) { b.classList.remove('active'); });
-        btn.classList.add('active');
-        setOverlay(btn.getAttribute('data-layer'));
+  // Fetch RainViewer frame list and map to 5 slider positions
+  function loadRainFrames() {
+    fetch('https://api.rainviewer.com/public/weather-maps.json')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        rvHost = d.host || rvHost;
+        var past = (d.radar && d.radar.past)    || [];
+        var nc   = (d.radar && d.radar.nowcast) || [];
+
+        function pick(arr, idx) {
+          var entry = arr[idx >= 0 ? idx : arr.length + idx];
+          return entry ? { path: entry.path, ts: entry.time } : null;
+        }
+        // Slot 0 = oldest (−2h), slot 2 = latest past ("now"), 3–4 = nowcast
+        rainFrames[0] = pick(past, Math.max(0, past.length - 3));
+        rainFrames[1] = pick(past, Math.max(0, past.length - 2));
+        rainFrames[2] = pick(past, past.length - 1);
+        rainFrames[3] = pick(nc, 0);
+        rainFrames[4] = pick(nc, 1);
+
+        updateRainInfo(past, nc);
+        if (currentLayer === 'rain') showRainLayer();
+      })
+      .catch(function () {
+        // Fallback: static RainViewer coverage layer
+        rainFrames[2] = { path: '/v2/coverage/0', ts: null, fallback: true };
+        if (currentLayer === 'rain') showRainLayer();
       });
-    });
   }
 
-  // ── Map controls ─────────────────────────────────────────────
-  function setupMapControls() {
-    var zi = document.getElementById('zoom-in');
-    var zo = document.getElementById('zoom-out');
-    var rc = document.getElementById('map-recenter');
-    if (zi) zi.addEventListener('click', function () { if (map) map.zoomIn(); });
-    if (zo) zo.addEventListener('click', function () { if (map) map.zoomOut(); });
-    if (rc) rc.addEventListener('click', function () {
-      if (map) map.flyTo([lat, lon], 10, { duration: 0.8 });
-    });
+  // Open-Meteo: temperature, cloud cover, wind (used by clouds/wind/temp layers)
+  function loadWeatherHourly() {
+    var url = 'https://api.open-meteo.com/v1/forecast'
+      + '?latitude='  + lat
+      + '&longitude=' + lon
+      + '&hourly=temperature_2m,cloud_cover,wind_speed_10m,wind_direction_10m'
+      + '&forecast_days=2&timezone=auto';
+
+    fetch(url)
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        weatherHourly = [];
+        var h = d.hourly || {};
+        var times = h.time || [];
+        for (var i = 0; i < times.length; i++) {
+          weatherHourly.push({
+            time:      times[i],
+            temp:      h.temperature_2m[i],
+            clouds:    h.cloud_cover[i],
+            windSpeed: h.wind_speed_10m[i],
+            windDir:   h.wind_direction_10m[i],
+          });
+        }
+        if (currentLayer !== 'rain') setLayer(currentLayer);
+      })
+      .catch(function () {
+        // Try cached weather as a rough fallback
+        var cw = get('weather_cache');
+        if (cw && cw.data && cw.data.hourly) {
+          weatherHourly = cw.data.hourly.map(function (h) {
+            return {
+              temp:      h.temp,
+              clouds:    h.cloudCover != null ? h.cloudCover : 50,
+              windSpeed: h.windSpeed,
+              windDir:   h.windDir   != null ? h.windDir   : 180,
+            };
+          });
+        }
+      });
   }
 
-  // ── Timeline sliders ─────────────────────────────────────────
+  // Open-Meteo air quality: european_aqi (used by AQI layer)
+  function loadAQIHourly() {
+    var url = 'https://air-quality-api.open-meteo.com/v1/air-quality'
+      + '?latitude='  + lat
+      + '&longitude=' + lon
+      + '&hourly=european_aqi&forecast_days=2&timezone=auto';
+
+    fetch(url)
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        aqiHourly = [];
+        var h = d.hourly || {};
+        var times = h.time || [];
+        for (var i = 0; i < times.length; i++) {
+          aqiHourly.push({ time: times[i], aqi: h.european_aqi[i] || 0 });
+        }
+        if (currentLayer === 'aqi') setLayer('aqi');
+      })
+      .catch(function () {});
+  }
+
+  // ── Hourly index helpers ──────────────────────────────────────────
+  // Returns the index in weatherHourly that matches the current local hour.
+  // Open-Meteo returns times in the local timezone when timezone=auto.
+  function currentWeatherIndex() {
+    var now = new Date();
+    var target = now.getFullYear() + '-' +
+                 pad(now.getMonth() + 1)  + '-' +
+                 pad(now.getDate())        + 'T' +
+                 pad(now.getHours())       + ':00';
+    for (var i = 0; i < weatherHourly.length; i++) {
+      if (weatherHourly[i].time === target) return i;
+    }
+    // Rough fallback: treat entry 0 as midnight and add current hour
+    return Math.min(now.getHours(), weatherHourly.length - 1);
+  }
+
+  function currentAQIIndex() {
+    var now = new Date();
+    var target = now.getFullYear() + '-' +
+                 pad(now.getMonth() + 1) + '-' +
+                 pad(now.getDate())       + 'T' +
+                 pad(now.getHours())      + ':00';
+    for (var i = 0; i < aqiHourly.length; i++) {
+      if (aqiHourly[i].time === target) return i;
+    }
+    return Math.min(now.getHours(), aqiHourly.length - 1);
+  }
+
+  function getWeatherAtPos() {
+    if (!weatherHourly.length) return null;
+    var base   = currentWeatherIndex();
+    var offset = timelinePos - 2;          // −2 … +2
+    var idx    = Math.max(0, Math.min(weatherHourly.length - 1, base + offset));
+    return weatherHourly[idx];
+  }
+
+  function getAQIAtPos() {
+    if (!aqiHourly.length) return null;
+    var base   = currentAQIIndex();
+    var offset = timelinePos - 2;
+    var idx    = Math.max(0, Math.min(aqiHourly.length - 1, base + offset));
+    return aqiHourly[idx] ? aqiHourly[idx].aqi : null;
+  }
+
+  // ── Overlay management ────────────────────────────────────────────
+  function clearOverlays() {
+    if (activeTileLayer)  { map.removeLayer(activeTileLayer);  activeTileLayer  = null; }
+    if (activeCircleLayer){ map.removeLayer(activeCircleLayer); activeCircleLayer = null; }
+    for (var i = 0; i < extraMarkers.length; i++) {
+      if (map) map.removeLayer(extraMarkers[i]);
+    }
+    extraMarkers = [];
+  }
+
+  function addMarker(latlng, html, anchor) {
+    var icon = L.divIcon({
+      className:  '',
+      html:       html,
+      iconAnchor: anchor || [0, 0],
+    });
+    var m = L.marker(latlng, { icon: icon, interactive: false }).addTo(map);
+    extraMarkers.push(m);
+    return m;
+  }
+
+  // ── Layer switching ───────────────────────────────────────────────
+  function setLayer(type) {
+    if (!map) return;
+    currentLayer = type;
+    clearOverlays();
+
+    switch (type) {
+      case 'rain':   showRainLayer();   break;
+      case 'clouds': showCloudsLayer(); break;
+      case 'wind':   showWindLayer();   break;
+      case 'aqi':    showAQILayer();    break;
+      case 'temp':   showTempLayer();   break;
+    }
+
+    updateLegend(type);
+    updateInfoPanel(type);
+  }
+
+  // ── Rain layer (RainViewer tiles) ─────────────────────────────────
+  function showRainLayer() {
+    var frame = rainFrames[timelinePos];
+    var url;
+
+    if (!frame) {
+      // Frames not yet loaded — use static coverage placeholder
+      url = 'https://tilecache.rainviewer.com/v2/coverage/0/256/{z}/{x}/{y}/2/1_1.png';
+    } else if (frame.fallback) {
+      url = 'https://tilecache.rainviewer.com/v2/coverage/0/256/{z}/{x}/{y}/2/1_1.png';
+    } else {
+      // Real radar frame: colour scheme 4, smooth+snow options 1_1
+      url = 'https://' + rvHost + frame.path + '/256/{z}/{x}/{y}/4/1_1.png';
+    }
+
+    activeTileLayer = L.tileLayer(url, { opacity: 0.65, errorTileUrl: '' });
+    activeTileLayer.on('tileerror', function () {}); // suppress console noise
+    activeTileLayer.addTo(map);
+  }
+
+  // ── Clouds layer (L.Circle + badge) ──────────────────────────────
+  function showCloudsLayer() {
+    var d     = getWeatherAtPos();
+    var cover = (d && d.clouds != null) ? d.clouds : 50;
+
+    // Colour: greyish-blue; opacity scales with coverage
+    var opacity   = 0.08 + (cover / 100) * 0.52;
+    var lightness = Math.round(88 - (cover / 100) * 45);
+    var sat       = Math.round(12 + (cover / 100) * 18);
+    var color     = 'hsl(220,' + sat + '%,' + lightness + '%)';
+
+    activeCircleLayer = L.circle([lat, lon], {
+      radius:      90000,
+      fillColor:   color,
+      fillOpacity: opacity,
+      color:       'transparent',
+      weight:      0,
+    }).addTo(map);
+
+    var desc = cover < 15 ? 'Clear sky'
+             : cover < 40 ? 'Mostly clear'
+             : cover < 65 ? 'Partly cloudy'
+             : cover < 85 ? 'Mostly cloudy'
+             :               'Overcast';
+
+    addMarker([lat, lon], infoBadge(cover.toFixed(0) + '%', desc, '#64748b'), [40, 22]);
+  }
+
+  // ── Wind layer (L.Circle + directional arrow badge) ───────────────
+  function showWindLayer() {
+    var d     = getWeatherAtPos();
+    var speed = (d && d.windSpeed != null) ? d.windSpeed : 10;
+    var dir   = (d && d.windDir   != null) ? d.windDir   : 180;
+
+    var color = speed < 10 ? '#22c55e'
+              : speed < 25 ? '#84cc16'
+              : speed < 40 ? '#f59e0b'
+              : speed < 60 ? '#f97316'
+              :               '#ef4444';
+
+    activeCircleLayer = L.circle([lat, lon], {
+      radius:      70000,
+      fillColor:   color,
+      fillOpacity: 0.12,
+      color:       color,
+      weight:      1,
+      opacity:     0.3,
+    }).addTo(map);
+
+    // Arrow: points in the direction the wind is BLOWING TO (dir + 180 from meteorological convention)
+    var arrowDeg = (dir + 180) % 360;
+    var compass  = degToCompass(dir);
+    var strength = speed < 5  ? 'Calm'
+                 : speed < 15 ? 'Light breeze'
+                 : speed < 30 ? 'Moderate'
+                 : speed < 50 ? 'Strong'
+                 :               'Severe';
+
+    var html =
+      '<div style="text-align:center">' +
+        '<div style="background:rgba(0,0,0,.75);padding:10px 14px;border-radius:12px;' +
+             'box-shadow:0 2px 10px rgba(0,0,0,.55)">' +
+          '<svg width="44" height="44" viewBox="0 0 44 44" ' +
+               'style="display:block;margin:0 auto 5px;transform:rotate(' + arrowDeg + 'deg)">' +
+            '<polygon points="22,4 28,36 22,29 16,36" fill="' + color + '"/>' +
+          '</svg>' +
+          '<div style="color:#fff;font-weight:800;font-size:14px;line-height:1.2">' + speed.toFixed(0) + ' km/h</div>' +
+          '<div style="color:rgba(255,255,255,.6);font-size:11px;margin-top:2px">' + compass + ' · ' + strength + '</div>' +
+        '</div>' +
+      '</div>';
+
+    addMarker([lat, lon], html, [56, 80]);
+  }
+
+  // ── AQI layer (L.Circle + AQI badge) ─────────────────────────────
+  function showAQILayer() {
+    var aqi = getAQIAtPos();
+    if (aqi == null) {
+      var ca = get('aqi_cache');
+      aqi = (ca && ca.data && ca.data.current) ? (ca.data.current.aqi || 50) : 50;
+    }
+
+    var color   = aqiColor(aqi);
+    var opacity = 0.12 + Math.min(aqi / 200, 1) * 0.32;
+
+    activeCircleLayer = L.circle([lat, lon], {
+      radius:      80000,
+      fillColor:   color,
+      fillOpacity: opacity,
+      color:       color,
+      weight:      1,
+      opacity:     0.35,
+    }).addTo(map);
+
+    var label = aqi <= 50  ? 'Good'
+              : aqi <= 100 ? 'Moderate'
+              : aqi <= 150 ? 'Sensitive groups'
+              : aqi <= 200 ? 'Unhealthy'
+              :               'Hazardous';
+
+    addMarker([lat, lon], infoBadge('AQI ' + Math.round(aqi), label, color), [46, 22]);
+  }
+
+  // ── Temperature layer (L.Circle + temp badge) ─────────────────────
+  function showTempLayer() {
+    var d    = getWeatherAtPos();
+    var temp = (d && d.temp != null) ? d.temp : 25;
+
+    // Map −10 → 45 °C to hue 240 (blue) → 0 (red)
+    var hue   = Math.max(0, Math.min(240, 240 - ((temp + 10) / 55) * 240));
+    var color = 'hsl(' + hue.toFixed(0) + ',85%,55%)';
+
+    activeCircleLayer = L.circle([lat, lon], {
+      radius:      85000,
+      fillColor:   color,
+      fillOpacity: 0.22,
+      color:       color,
+      weight:      1,
+      opacity:     0.4,
+    }).addTo(map);
+
+    var feel = temp < 5  ? 'Freezing'
+             : temp < 12 ? 'Cold'
+             : temp < 20 ? 'Cool'
+             : temp < 26 ? 'Comfortable'
+             : temp < 33 ? 'Warm'
+             :               'Hot';
+
+    addMarker([lat, lon], infoBadge(temp.toFixed(1) + '°C', feel, color), [46, 22]);
+  }
+
+  // ── Badge HTML helper ─────────────────────────────────────────────
+  function infoBadge(mainText, subText, color) {
+    return '<div style="background:rgba(0,0,0,.75);padding:8px 14px;border-radius:12px;' +
+           'box-shadow:0 2px 10px rgba(0,0,0,.5);text-align:center;white-space:nowrap">' +
+             '<div style="color:' + color + ';font-weight:800;font-size:15px;line-height:1.2">' + mainText + '</div>' +
+             '<div style="color:rgba(255,255,255,.65);font-size:11px;margin-top:2px">' + subText + '</div>' +
+           '</div>';
+  }
+
+  // ── AQI colour scale ─────────────────────────────────────────────
+  function aqiColor(v) {
+    return v <= 50  ? '#22c55e'
+         : v <= 100 ? '#84cc16'
+         : v <= 150 ? '#f59e0b'
+         : v <= 200 ? '#f97316'
+         :             '#ef4444';
+  }
+
+  // ── Degrees → compass cardinal ────────────────────────────────────
+  function degToCompass(deg) {
+    var dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+    return dirs[Math.round(deg / 22.5) % 16] || 'N';
+  }
+
+  // ── Legend update ─────────────────────────────────────────────────
+  function updateLegend(type) {
+    var meta = LAYER_META[type];
+    if (!meta) return;
+    var titleEl = document.getElementById('legend-title');
+    var barEl   = document.getElementById('legend-bar');
+    var lblsEl  = document.getElementById('legend-labels');
+    if (titleEl) titleEl.textContent = meta.legendTitle;
+    if (barEl)   barEl.style.background = meta.legendGrad;
+    if (lblsEl) {
+      lblsEl.innerHTML = meta.legendLabels.map(function (l) {
+        return '<span>' + l + '</span>';
+      }).join('');
+    }
+  }
+
+  // ── Info panel update ─────────────────────────────────────────────
+  function updateInfoPanel(type) {
+    var titleEl = document.getElementById('info-panel-title');
+    var bodyEl  = document.getElementById('info-panel-body');
+    if (!titleEl || !bodyEl) return;
+
+    var meta = LAYER_META[type];
+    if (meta) titleEl.textContent = meta.infoTitle;
+
+    switch (type) {
+      case 'rain': {
+        // Populated by updateRainInfo() once frames load; show placeholder until then
+        if (bodyEl.innerHTML.indexOf('Loading') >= 0 || bodyEl.innerHTML === '') {
+          bodyEl.innerHTML = '<div style="opacity:.5;font-size:var(--text-sm)">Loading radar…</div>';
+        }
+        break;
+      }
+      case 'clouds': {
+        var d     = getWeatherAtPos();
+        var cover = (d && d.clouds != null) ? d.clouds : null;
+        var desc  = cover == null ? '—'
+                  : cover < 15   ? 'Clear sky'
+                  : cover < 40   ? 'Mostly clear'
+                  : cover < 65   ? 'Partly cloudy'
+                  : cover < 85   ? 'Mostly cloudy'
+                  :                 'Overcast';
+        bodyEl.innerHTML =
+          infoRow('☁️', 'Cloud coverage', cover != null ? cover.toFixed(0) + '%' : '—') +
+          infoRow('🌤', 'Conditions',     desc) +
+          (d && d.temp != null ? infoRow('🌡', 'Temperature', d.temp.toFixed(1) + '°C') : '');
+        break;
+      }
+      case 'wind': {
+        var d     = getWeatherAtPos();
+        var spd   = (d && d.windSpeed != null) ? d.windSpeed : null;
+        var dirV  = (d && d.windDir   != null) ? d.windDir   : null;
+        var str   = spd == null ? '—'
+                  : spd < 5    ? 'Calm'
+                  : spd < 15   ? 'Light breeze'
+                  : spd < 30   ? 'Moderate breeze'
+                  : spd < 50   ? 'Strong wind'
+                  :               'Severe storm';
+        bodyEl.innerHTML =
+          infoRow('💨', 'Wind speed',  spd  != null ? spd.toFixed(0)  + ' km/h' : '—') +
+          infoRow('🧭', 'Direction',   dirV != null ? degToCompass(dirV) + ' (' + dirV.toFixed(0) + '°)' : '—') +
+          infoRow('📊', 'Strength',    str);
+        break;
+      }
+      case 'aqi': {
+        var aqi = getAQIAtPos();
+        if (aqi == null) {
+          var ca = get('aqi_cache');
+          aqi = (ca && ca.data && ca.data.current) ? (ca.data.current.aqi || null) : null;
+        }
+        var aqiLabel   = aqi == null ? '—'
+                       : aqi <= 50  ? 'Good'
+                       : aqi <= 100 ? 'Moderate'
+                       : aqi <= 150 ? 'Unhealthy (Sensitive)'
+                       : aqi <= 200 ? 'Unhealthy'
+                       :               'Hazardous';
+        var advisory   = aqi == null         ? 'No data available.'
+                       : aqi > 150           ? 'Avoid prolonged outdoor activity.'
+                       : aqi > 100           ? 'Sensitive groups should reduce outdoor activity.'
+                       : aqi > 50            ? 'Acceptable for most; sensitive groups take care.'
+                       :                       'Air quality is satisfactory.';
+        bodyEl.innerHTML =
+          infoRow('🌿', 'AQI',      aqi != null ? Math.round(aqi).toString() : '—') +
+          infoRow('🏷',  'Category', aqiLabel) +
+          infoRow('💡', 'Advisory', advisory);
+        break;
+      }
+      case 'temp': {
+        var d    = getWeatherAtPos();
+        var temp = (d && d.temp != null) ? d.temp : null;
+        var feel = temp == null ? '—'
+                 : temp < 5    ? 'Freezing cold'
+                 : temp < 12   ? 'Cold'
+                 : temp < 20   ? 'Cool & pleasant'
+                 : temp < 26   ? 'Comfortable'
+                 : temp < 33   ? 'Warm'
+                 :                'Very hot';
+        bodyEl.innerHTML =
+          infoRow('🌡', 'Temperature', temp != null ? temp.toFixed(1) + '°C' : '—') +
+          infoRow('🌤', 'Conditions',  feel) +
+          (d && d.clouds != null ? infoRow('☁️', 'Cloud cover', d.clouds.toFixed(0) + '%') : '');
+        break;
+      }
+    }
+  }
+
+  function infoRow(icon, label, value) {
+    return '<div class="info-row">' +
+             '<span class="info-row-label">' + icon + ' ' + label + '</span>' +
+             '<span class="info-row-value">'  + value + '</span>' +
+           '</div>';
+  }
+
+  // ── Rain info panel (called after RainViewer frames load) ─────────
+  function updateRainInfo(past, nc) {
+    var bodyEl = document.getElementById('info-panel-body');
+    if (!bodyEl || currentLayer !== 'rain') return;
+
+    // Use cached weather hourly to find next rain
+    var cw      = get('weather_cache');
+    var hourly  = (cw && cw.data && cw.data.hourly) ? cw.data.hourly : [];
+    var nextIdx = -1;
+    for (var i = 0; i < hourly.length; i++) {
+      if (hourly[i].precipProb >= 40) { nextIdx = i; break; }
+    }
+
+    var rainMsg = nextIdx === -1 ? 'No rain expected'
+                : nextIdx === 0  ? 'Rain now'
+                :                  'Rain expected in ~' + nextIdx + 'h';
+    var rainIcon = nextIdx === -1 ? '☀️' : nextIdx <= 1 ? '🌧' : '🌦';
+    var radarNote = (nc && nc.length > 0)
+      ? 'Radar active · ' + nc.length + ' forecast frames'
+      : (past && past.length > 0)
+        ? past.length + ' radar frames loaded'
+        : 'Using coverage overlay';
+
+    bodyEl.innerHTML =
+      '<div style="text-align:center;padding:6px 0 10px">' +
+        '<div style="font-size:2.4rem;margin-bottom:4px">' + rainIcon + '</div>' +
+        '<div style="font-size:var(--text-base);font-weight:700;color:var(--color-brand);margin-bottom:4px">' + rainMsg + '</div>' +
+        '<div style="font-size:var(--text-xs);opacity:.5">' + radarNote + '</div>' +
+      '</div>' +
+      (nextIdx > 0 && hourly[nextIdx]
+        ? infoRow('💧', 'Precip chance', hourly[nextIdx].precipProb + '%')
+        : '');
+  }
+
+  // ── AeroScore sidebar card ────────────────────────────────────────
+  function updateSidebarAeroScore() {
+    var cw = get('weather_cache');
+    var ca = get('aqi_cache');
+    if (!cw || !ca || !cw.data || !ca.data) return;
+    var w = cw.data, a = ca.data;
+
+    var aqi   = (a.current && a.current.aqi)       || 50;
+    var temp  = (w.current && w.current.temp)       || 25;
+    var hum   = (w.current && w.current.humidity)   || 50;
+    var uv    = (w.current && w.current.uvIndex)    || 0;
+    var wind  = (w.current && w.current.windSpeed)  || 0;
+
+    var aqiP  = aqi  <= 50 ? 0  : aqi  <= 100 ? 10 : aqi  <= 150 ? 20 : aqi  <= 200 ? 35 : 50;
+    var tDev  = Math.min(Math.abs(temp - 23) / 5, 3) * 5;
+    var hDev  = (hum < 30 || hum > 70) ? 10 : 0;
+    var uvP   = uv   <= 2 ? 0 : uv   <= 5 ? 3  : uv   <= 7 ? 8  : 15;
+    var wP    = wind < 20 ? 0 : wind < 40 ? 6  : 12;
+    var score = Math.max(0, Math.min(100, Math.round(100 - aqiP - tDev - hDev - uvP - wP)));
+    var color = score >= 80 ? '#22c55e' : score >= 60 ? '#eab308' : score >= 40 ? '#f97316' : '#ef4444';
+    var label = score >= 80 ? 'Good Conditions' : score >= 60 ? 'Fair Conditions' : score >= 40 ? 'Poor Conditions' : 'Hazardous';
+
+    var el = document.getElementById('radar-aeroscore');
+    if (el) el.innerHTML =
+      '<div class="sc-label">AeroScore™</div>' +
+      '<div class="sc-value" style="color:' + color + '">' + score + '<span>/100</span></div>' +
+      '<div class="sc-status" style="color:' + color + '">' + label + '</div>';
+  }
+
+  // ── Timeline setup ────────────────────────────────────────────────
   function setupTimeline() {
     var s1 = document.getElementById('timeline-slider');
     var s2 = document.getElementById('timeline-slider-2');
     var t1 = document.getElementById('timeline-time');
     var t2 = document.getElementById('timeline-time-2');
-    var LABELS = ['-2h', '-1h', 'Now', '+1h', '+2h'];
+    var now = new Date();
+
+    function timeLabel(val) {
+      var offset = +val - 2;
+      if (offset === 0) {
+        return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      var t = new Date(now.getTime() + offset * 3600000);
+      return t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) +
+             (offset > 0 ? ' ▸' : '');
+    }
 
     function sync(val) {
-      var lbl = LABELS[+val] || 'Now';
-      if (t1) t1.textContent = lbl;
-      if (t2) t2.textContent = lbl;
-      var nowBtns = document.querySelectorAll('.timeline-now-btn');
-      nowBtns.forEach(function (b) {
+      timelinePos = +val;
+      if (t1) t1.textContent = timeLabel(val);
+      if (t2) t2.textContent = timeLabel(val);
+      document.querySelectorAll('.timeline-now-btn').forEach(function (b) {
         if (+val === 2) b.classList.add('hidden'); else b.classList.remove('hidden');
       });
-      if (activeOverlay) {
-        var base = LAYERS[currentLayer] ? (LAYERS[currentLayer].opacity || 0.65) : 0.65;
-        activeOverlay.setOpacity(Math.max(0.2, base - Math.abs(+val - 2) * 0.12));
-      }
+      setLayer(currentLayer);
     }
 
     if (s1) {
@@ -370,58 +941,30 @@
     sync(2);
   }
 
-  // ── Sidebar data ─────────────────────────────────────────────
-  function updateSidebar() {
-    var cw = getCached('weather_cache');
-    var ca = getCached('aqi_cache');
-    if (!cw || !ca || !cw.data || !ca.data) return;
-    var w = cw.data, a = ca.data;
-
-    // Compute AeroScore
-    var aqi    = a.current.aqi || 50;
-    var aqiPen = aqi <= 50 ? 0 : aqi <= 100 ? 10 : aqi <= 150 ? 20 : aqi <= 200 ? 35 : 50;
-    var tDev   = Math.min(Math.abs(w.current.temp - 23) / 5, 3) * 5;
-    var hDev   = (w.current.humidity < 30 || w.current.humidity > 70) ? 10 : 0;
-    var uvPen  = w.current.uvIndex <= 2 ? 0 : w.current.uvIndex <= 5 ? 3 : w.current.uvIndex <= 7 ? 8 : 15;
-    var wPen   = w.current.windSpeed < 20 ? 0 : w.current.windSpeed < 40 ? 6 : 12;
-    var score  = Math.max(0, Math.min(100, Math.round(100 - aqiPen - tDev - hDev - uvPen - wPen)));
-    var color  = score >= 80 ? '#22c55e' : score >= 60 ? '#eab308' : score >= 40 ? '#f97316' : '#ef4444';
-    var label  = score >= 80 ? 'Good Conditions' : score >= 60 ? 'Fair Conditions' : score >= 40 ? 'Poor Conditions' : 'Hazardous';
-
-    var asEl = document.getElementById('radar-aeroscore');
-    if (asEl) {
-      asEl.innerHTML =
-        '<div class="sc-label">AeroScore™</div>' +
-        '<div class="sc-value" style="color:' + color + '">' + score + '<span>/100</span></div>' +
-        '<div class="sc-status" style="color:' + color + '">' + label + '</div>';
-    }
-
-    // Rain info
-    var rainInfo = document.getElementById('rain-info');
-    if (rainInfo && w.hourly) {
-      var next = -1;
-      for (var i = 0; i < w.hourly.length; i++) {
-        if (w.hourly[i].precipProb >= 40) { next = i; break; }
-      }
-      var timeStr = next === -1 ? 'No rain expected' : next === 0 ? 'Rain now' : 'in ' + next + 'h';
-      var pct     = next >= 0 ? w.hourly[next].precipProb : 0;
-      var icon    = next === -1 ? '☀️' : pct > 60 ? '🌧' : '🌦';
-      rainInfo.innerHTML =
-        '<div style="font-size:var(--text-sm);opacity:.6;margin-bottom:6px">Next precipitation</div>' +
-        '<div style="font-size:var(--text-xl);font-weight:700;color:var(--color-brand);margin-bottom:4px">' + timeStr + '</div>' +
-        (pct > 0 ? '<div style="font-size:var(--text-sm);opacity:.6">' + pct + '% chance</div>' : '') +
-        '<div style="margin-top:8px;font-size:2.5rem">' + icon + '</div>';
-    }
+  // ── Layer tab buttons ─────────────────────────────────────────────
+  function setupLayerButtons() {
+    document.querySelectorAll('.layer-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.layer-btn').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        setLayer(btn.getAttribute('data-layer'));
+      });
+    });
   }
 
-  // ── Boot ─────────────────────────────────────────────────────
-  function boot() {
-    setupLayerButtons();
-    setupMapControls();
-    setupTimeline();
-    initMap();
+  // ── Map zoom / recenter controls ──────────────────────────────────
+  function setupMapControls() {
+    var zi = document.getElementById('zoom-in');
+    var zo = document.getElementById('zoom-out');
+    var rc = document.getElementById('map-recenter');
+    if (zi) zi.addEventListener('click', function () { if (map) map.zoomIn(); });
+    if (zo) zo.addEventListener('click', function () { if (map) map.zoomOut(); });
+    if (rc) rc.addEventListener('click', function () {
+      if (map) map.flyTo([lat, lon], 8, { duration: 0.8 });
+    });
   }
 
+  // ── Start ─────────────────────────────────────────────────────────
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);
   } else {
