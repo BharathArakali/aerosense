@@ -279,6 +279,28 @@ export async function reverseGeocode(lat, lon) {
   }
 }
 
+/**
+ * Detect the country for a coordinate pair via reverse geocoding.
+ * Used once on first launch to seed the "Browse by Country" picker with
+ * the user's own country pre-selected. Returns null on failure — callers
+ * should treat that as "unknown, let the user pick manually".
+ *
+ * @returns {Promise<{code: string, name: string} | null>}
+ */
+export async function detectCountry(lat, lon) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=3`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    const data = await res.json();
+    const code = data.address?.country_code;
+    const name = data.address?.country;
+    if (!code || !name) return null;
+    return { code: code.toUpperCase(), name };
+  } catch {
+    return null;
+  }
+}
+
 // ---- SVG Gauge Ring ----
 export function buildGaugeRing(svgEl, value, max, color) {
   const size = 60, r = 22, cx = 30, cy = 30;

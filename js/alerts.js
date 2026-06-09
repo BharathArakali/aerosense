@@ -6,6 +6,7 @@
 
 import Storage from './storage.js';
 import { getAQILabel, getUVLabel, el, qs, qsa } from './utils.js';
+import { checkAndFireAlertNotifications } from './notify.js';
 
 let state = {
   settings:     null,
@@ -31,7 +32,12 @@ async function init() {
 
   renderAll();
   setupEventListeners();
-  updateNotifStatus();        // show permission banner on load
+  updateNotifToggle();        // reflect current notification state on load
+
+  // Re-check active conditions against the user's prefs/permission and
+  // fire any notifications that are due — covers the case where alert
+  // conditions changed since the last Home-page refresh.
+  checkAndFireAlertNotifications(state.weather, state.aqi);
 }
 
 function applyTheme(theme) {
@@ -45,9 +51,11 @@ function applyTheme(theme) {
 function buildAlerts() {
   const w = state.weather;
   const a = state.aqi;
-  const aqiVal     = a?.current?.aqi      || 78;
-  const uvVal      = w?.current?.uvIndex  || 8;
-  const windVal    = w?.current?.windSpeed || 14;
+  // Use ?? with safe non-extreme defaults so the count matches nav.js exactly.
+  // ?? 3 = UV safe (< 7, not active); ?? 50 = AQI good (<= 100, not active).
+  const aqiVal     = a?.current?.aqi      ?? 50;
+  const uvVal      = w?.current?.uvIndex  ?? 3;
+  const windVal    = w?.current?.windSpeed ?? 14;
   const precipProb = w?.daily?.[0]?.precipProb || 70;
 
   const allAlerts = [];
@@ -244,7 +252,7 @@ function buildAlertCard(alert) {
       </div>
       <!-- Expanded detail panel -->
       <div class="ac-detail" style="display:none;padding-top:12px;border-top:1px solid var(--color-border);margin-top:12px">
-        ${advice ? `<div style="font-size:var(--text-sm);opacity:.8;margin-bottom:10px">💡 ${advice}</div>` : ''}
+        ${advice ? `<div style="font-size:var(--text-sm);opacity:.8;margin-bottom:10px;display:flex;align-items:flex-start;gap:6px"><span style="flex-shrink:0;margin-top:1px">💡</span> ${advice}</div>` : ''}
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="ac-view-btn"
                   style="font-size:var(--text-xs);font-weight:600;color:var(--color-brand);
@@ -350,7 +358,7 @@ function showAlertModal(alert) {
     : '';
 
   const areaHTML = alert.area
-    ? `<div style="font-size:var(--text-sm);opacity:.6;margin-top:4px">📍 ${alert.area}</div>`
+    ? `<div style="font-size:var(--text-sm);opacity:.6;margin-top:4px;display:flex;align-items:center;gap:5px">📍 ${alert.area}</div>`
     : '';
 
   const overlay = document.createElement('div');
@@ -364,7 +372,7 @@ function showAlertModal(alert) {
       <button class="alert-modal-close" aria-label="Close">✕</button>
 
       <div class="alert-modal-hdr" style="background:${alert.iconBg}">
-        <div style="font-size:2.8rem;margin-bottom:var(--space-sm)">${alert.icon}</div>
+        <div style="margin-bottom:var(--space-sm)">${alert.icon}</div>
         <div style="font-weight:800;font-size:var(--text-xl);margin-bottom:6px">${alert.title}</div>
         <span class="ac-badge" style="color:${alert.badgeColor};background:rgba(0,0,0,.15);
               display:inline-flex;align-items:center;gap:4px">
@@ -426,7 +434,7 @@ function showAlertModal(alert) {
 function condChip(icon, value, label) {
   return `<div style="background:var(--bg-input);border-radius:var(--radius-md);
                        padding:10px 6px;text-align:center">
-    <div style="font-size:1.3rem;margin-bottom:3px">${icon}</div>
+    <div style="margin-bottom:3px;display:flex;justify-content:center">${icon}</div>
     <div style="font-size:var(--text-sm);font-weight:700">${value}</div>
     <div style="font-size:10px;opacity:.5;margin-top:1px">${label}</div>
   </div>`;
@@ -519,20 +527,88 @@ function renderLocationSummary() {
 // hides the red badge on ALL badge elements (sidebar, topbar, bottom nav).
 function updateBadgeCount() {
   const active = buildAlerts().filter(a => a.status === 'active').length;
-  // Write the "seen" signature so other pages know alerts have been viewed
-  try { localStorage.setItem('aerosense_alerts_seen_sig', 'c' + active); } catch (e) {}
+  try {
+    // Store the exact count the user is seeing now.
+    // nav.js reads this and hides the badge when seenCount >= currentCount.
+    localStorage.setItem('aerosense_alerts_seen', String(active));
+    // Remove the old string-based key so there's no stale comparison.
+    localStorage.removeItem('aerosense_alerts_seen_sig');
+  } catch (e) {}
 
-  // Target every badge element regardless of its exact class combination
+  // Immediately hide every badge on this page.
   qsa('.alerts-badge, .btn-badge, .bn-badge').forEach(badge => {
     badge.textContent = '0';
     badge.style.display = 'none';
   });
 }
 
-// ── Notifications ─────────────────────────────────────────────────
-async function requestNotificationPermission() {
+// ── Notification master preference (in-app on/off, separate from OS permission) ──
+function getNotifMasterPref() {
+  try { return JSON.parse(localStorage.getItem('aerosense_notif_master') ?? 'true'); }
+  catch { return true; }
+}
+function setNotifMasterPref(val) {
+  try { localStorage.setItem('aerosense_notif_master', JSON.stringify(!!val)); } catch {}
+}
+
+// Update toggle button + topbar bell to reflect current permission + pref state
+function updateNotifToggle() {
+  const btn   = el('notif-toggle');
+  const label = btn?.querySelector('.ntb-label');
+  const banner = el('notif-status-banner');
+  const topBell = qs('.mt-btn.notif-btn');
+
   if (!('Notification' in window)) {
-    showToast('Notifications are not supported in this browser.\nFor the best experience, install AeroSense to your home screen.', 'warn');
+    if (btn)    { btn.className = 'notif-toggle-btn ntb-blocked'; btn.setAttribute('aria-pressed','false'); }
+    if (label)  { label.textContent = 'Not Supported'; }
+    if (banner) { banner.className = 'notif-status-banner notif-denied'; banner.style.display = ''; banner.textContent = '🔕 Push notifications are not supported in this browser.'; }
+    return;
+  }
+
+  const perm     = Notification.permission;
+  const masterOn = getNotifMasterPref();
+  const isOn     = perm === 'granted' && masterOn;
+
+  // Toggle button state
+  if (btn) {
+    btn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+    if (perm === 'denied') {
+      btn.className = 'notif-toggle-btn ntb-blocked';
+    } else if (isOn) {
+      btn.className = 'notif-toggle-btn ntb-on';
+    } else {
+      btn.className = 'notif-toggle-btn';
+    }
+  }
+  if (label) {
+    label.textContent = perm === 'denied'           ? 'Blocked — see Site Settings'
+                      : (perm === 'granted' && isOn) ? 'Notifications On'
+                      : (perm === 'granted' && !isOn)? 'Notifications Off'
+                      :                                'Enable Notifications';
+  }
+
+  // Status banner — only shown when blocked (can't fix via toggle)
+  if (banner) {
+    if (perm === 'denied') {
+      banner.className = 'notif-status-banner notif-denied';
+      banner.style.display = '';
+      banner.textContent = '🔕 Notifications blocked. Open browser Site Settings → Notifications to allow this site.';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+
+  // Topbar bell icon colour
+  if (topBell) {
+    topBell.classList.toggle('ntb-on', isOn);
+    topBell.setAttribute('aria-label', isOn ? 'Notifications on' : 'Toggle notifications');
+  }
+}
+
+// ── Notifications ─────────────────────────────────────────────────
+async function handleNotifToggle() {
+  if (!('Notification' in window)) {
+    showToast('Push notifications are not supported in this browser.', 'warn');
     return;
   }
 
@@ -543,37 +619,47 @@ async function requestNotificationPermission() {
                        window.navigator.standalone === true;
 
   if (isIOS && !isStandalone) {
-    showToast('To receive notifications on iOS:\nTap the Share icon in Safari → "Add to Home Screen", then re-open the app.', 'info');
+    showToast('To receive notifications on iOS:\nTap Share → "Add to Home Screen", then re-open the app.', 'info');
     return;
   }
 
-  const current = Notification.permission;
+  const perm = Notification.permission;
 
-  if (current === 'granted') {
-    showTestNotification();
-    showToast('Notifications are already enabled! A test notification was sent. 🔔', 'success');
+  if (perm === 'denied') {
+    showToast('Notifications are blocked. Go to browser Site Settings → Notifications and allow this site.', 'error');
+    updateNotifToggle();
     return;
   }
 
-  if (current === 'denied') {
-    showToast('Notifications are blocked.\nGo to browser → Site Settings → Notifications and allow this site.', 'error');
-    updateNotifStatus();
+  if (perm === 'granted') {
+    // Toggle the in-app master preference on/off
+    const wasOn = getNotifMasterPref();
+    setNotifMasterPref(!wasOn);
+    updateNotifToggle();
+    if (!wasOn) {
+      showToast('Notifications enabled! 🔔', 'success');
+      showTestNotification();
+    } else {
+      showToast('Notifications paused. Toggle again to re-enable.', 'info');
+    }
     return;
   }
 
-  // Permission is 'default' — prompt the user
+  // permission === 'default' — prompt the user
   try {
-    const perm = await Notification.requestPermission();
-    updateNotifStatus();
-    if (perm === 'granted') {
+    const result = await Notification.requestPermission();
+    if (result === 'granted') {
+      setNotifMasterPref(true);
+      updateNotifToggle();
       showTestNotification();
       showToast('Notifications enabled! You\'ll be alerted about weather changes. 🔔', 'success');
-    } else if (perm === 'denied') {
-      showToast('Notifications were denied. You can enable them in browser site settings.', 'warn');
     } else {
-      showToast('Notification permission was not granted. Try again from browser settings.', 'warn');
+      updateNotifToggle();
+      showToast(result === 'denied'
+        ? 'Notifications denied. Enable in browser Site Settings.'
+        : 'Notification permission not granted.', 'warn');
     }
-  } catch (err) {
+  } catch {
     showToast('Could not request notification permission. Try enabling from browser settings.', 'error');
   }
 }
@@ -606,7 +692,7 @@ function updateNotifStatus() {
   if (!('Notification' in window)) {
     banner.className   = 'notif-status-banner notif-denied';
     banner.style.display = '';
-    banner.innerHTML   = '🔕 Push notifications are not supported in this browser.';
+    banner.innerHTML   = `🔕 Push notifications are not supported in this browser.`;
     return;
   }
 
@@ -614,7 +700,7 @@ function updateNotifStatus() {
   if (perm === 'granted') {
     banner.className   = 'notif-status-banner notif-granted';
     banner.style.display = '';
-    banner.innerHTML   = '🔔 Notifications are enabled — you\'ll be alerted about weather changes.';
+    banner.innerHTML   = `🔔 Notifications are enabled — you'll be alerted about weather changes.`;
     // Visually update the enable-buttons to reflect granted state
     qsa('.notif-btn').forEach(btn => {
       btn.textContent         = '✓ Notifications On';
@@ -626,7 +712,7 @@ function updateNotifStatus() {
   } else if (perm === 'denied') {
     banner.className   = 'notif-status-banner notif-denied';
     banner.style.display = '';
-    banner.innerHTML   = '🔕 Notifications blocked. Open browser Site Settings to allow notifications.';
+    banner.innerHTML   = `🔕 Notifications blocked. Open browser Site Settings to allow notifications.`;
   } else {
     // Default — hide the banner; the button in the header handles this case
     banner.style.display = 'none';
@@ -685,11 +771,11 @@ function setupEventListeners() {
     });
   });
 
-  // "Enable Notifications" — wire ALL elements with class .notif-btn
-  // (there are two: one in the mobile topbar, one in the page header)
-  qsa('.notif-btn').forEach(btn => {
-    btn.addEventListener('click', requestNotificationPermission);
-  });
+  // Notification toggle — main toggle button + mobile topbar bell
+  const notifToggle = el('notif-toggle');
+  if (notifToggle) notifToggle.addEventListener('click', handleNotifToggle);
+  const topBell = qs('.mt-btn.notif-btn');
+  if (topBell) topBell.addEventListener('click', handleNotifToggle);
 
   // "View All Alerts" button
   const viewAllBtn = el('view-all-alerts');

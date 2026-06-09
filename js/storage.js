@@ -41,26 +41,33 @@ const Storage = (() => {
   };
 
   // ---- Settings helpers ----
-  const getSettings = () => get('settings', {
+  // Default settings shape — all keys always present.
+  const DEFAULT_SETTINGS = {
     theme: 'dark',
-    units: {
-      temperature: 'C',
-      wind: 'kmh',
-      pressure: 'hPa',
-      distance: 'km',
-    },
+    units: { temperature: 'C', wind: 'kmh', pressure: 'hPa', distance: 'km' },
     fullscreenWeather: false,
     dynamicAnimations: true,
     updateFrequency: 10,
     language: 'en',
-    alertPrefs: {
-      rain: true,
-      aqi: true,
-      uv: true,
-      wind: false,
-      severe: true,
-    },
-  });
+    alertPrefs: { rain: true, aqi: true, uv: true, wind: false, severe: true },
+  };
+
+  // Deep-merge stored settings with defaults so a partial save (e.g. only
+  // {theme:'dark'} written by nav.js) never causes TypeError on settings page.
+  const getSettings = () => {
+    const stored = get('settings', null);
+    if (!stored) return {
+      ...DEFAULT_SETTINGS,
+      units: { ...DEFAULT_SETTINGS.units },
+      alertPrefs: { ...DEFAULT_SETTINGS.alertPrefs },
+    };
+    return {
+      ...DEFAULT_SETTINGS,
+      ...stored,
+      units:      { ...DEFAULT_SETTINGS.units,      ...(stored.units      || {}) },
+      alertPrefs: { ...DEFAULT_SETTINGS.alertPrefs, ...(stored.alertPrefs || {}) },
+    };
+  };
 
   const saveSettings = (settings) => set('settings', settings);
 
@@ -74,6 +81,10 @@ const Storage = (() => {
   const cacheLocation = (loc) => set('location', loc);
   const getCachedLocation = () => get('location', null);
 
+  // ---- Detected user country (seeds "Browse by Country" search) ----
+  const setUserCountry = (country) => set('user_country', country);
+  const getUserCountry = () => get('user_country', null);
+
   // ---- History (for Today vs Normal) ----
   const appendHistory = (entry) => {
     const history = get('weather_history', []);
@@ -86,9 +97,9 @@ const Storage = (() => {
 
   // ---- Saved places ----
   const getSavedPlaces = () => get('saved_places', [
-    { name: 'Mangalore', state: 'KA', temp: 30, condition: '⛅', lat: 12.87, lon: 74.84 },
-    { name: 'Mumbai', state: 'MH', temp: 28, condition: '🌤', lat: 19.07, lon: 72.87 },
-    { name: 'Delhi', state: 'DL', temp: 33, condition: '☀️', lat: 28.63, lon: 77.21 },
+    { name: 'Mangalore', state: 'KA', temp: 30, condition: 'Partly Cloudy', lat: 12.87, lon: 74.84 },
+    { name: 'Mumbai',    state: 'MH', temp: 28, condition: 'Partly Cloudy', lat: 19.07, lon: 72.87 },
+    { name: 'Delhi',     state: 'DL', temp: 33, condition: 'Clear Sky',     lat: 28.63, lon: 77.21 },
   ]);
   const savePlaces = (places) => set('saved_places', places);
 
@@ -102,6 +113,7 @@ const Storage = (() => {
     cacheWeather, getCachedWeather,
     cacheAQI, getCachedAQI,
     cacheLocation, getCachedLocation,
+    setUserCountry, getUserCountry,
     appendHistory, getHistory,
     getSavedPlaces, savePlaces,
     isInstallDismissed, dismissInstall,

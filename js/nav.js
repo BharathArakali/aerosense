@@ -69,12 +69,27 @@
     });
   }
 
-  /* ── 2. THEME TOGGLE ─────────────────────────────────────── */
+  /* ── 2. THEME TOGGLE ─────────────────────────────────────────── */
+  const SUN_SVG  = '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
+  const MOON_SVG = '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>';
+
+  function updateThemeIcons() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    // Dark mode → show sun (click switches to light); Light mode → show moon (click switches to dark)
+    document.querySelectorAll('.topbar-theme-btn').forEach(btn => {
+      btn.innerHTML = isDark ? SUN_SVG : MOON_SVG;
+    });
+  }
+
   function applyTheme(next) {
     document.documentElement.setAttribute('data-theme', next);
-    const s = getSettings(); s.theme = next; saveSettings(s);
+    // Merge theme into existing settings so we never overwrite units/prefs.
+    const existing = getCached('settings') || {};
+    const merged = Object.assign({}, existing, { theme: next });
+    try { localStorage.setItem('aerosense_settings', JSON.stringify(merged)); } catch(e) {}
     const meta = document.querySelector('meta[name=theme-color]');
     if (meta) meta.setAttribute('content', next === 'dark' ? '#0b0f1a' : '#eef2f8');
+    updateThemeIcons();
   }
   function setupThemeToggle() {
     document.querySelectorAll('.topbar-theme-btn').forEach(btn => {
@@ -84,38 +99,35 @@
         applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
       });
     });
+    updateThemeIcons();
   }
 
 
-  /* ── 3. PORTAL ENGINE ────────────────────────────────────── */
-  var _portal = null;  // the currently-open dropdown DOM element
+  /* ── 3. PORTAL ENGINE ─────────────────────────────────────────── */
+  var _portal = null;
 
   function closeAll() {
     if (_portal) { _portal.remove(); _portal = null; }
   }
 
-  /* Open a dropdown as a body-level portal, positioned below `anchorEl` */
   function openPortal(anchorEl, html, afterInsert) {
     closeAll();
     const tmp = document.createElement('div');
     tmp.innerHTML = html.trim();
     const dd = tmp.firstElementChild;
     if (!dd) return;
-    // Portal styles — fixed so no ancestor can clip it
     dd.style.cssText = 'position:fixed;z-index:99999;';
     document.body.appendChild(dd);
-    // Position below the anchor button
     const rect = anchorEl.getBoundingClientRect();
     dd.style.top  = (rect.bottom + 8) + 'px';
     dd.style.right = (window.innerWidth - rect.right) + 'px';
     dd.style.left = 'auto';
     if (afterInsert) afterInsert(dd);
-    // Animate in (transition picks up from CSS class)
     requestAnimationFrame(() => dd.classList.add('open'));
     _portal = dd;
   }
 
-  /* ── 4. NOTIFICATION ITEMS ───────────────────────────────── */
+  /* ── 4. NOTIFICATION ITEMS ─────────────────────────────────────────── */
   function buildNotifItems() {
     const { weather, aqi, location, ts } = getLiveData();
     const items = [];
@@ -125,15 +137,15 @@
       const wind   = weather.current.windSpeed || 0;
       const locStr = location?.name || 'Your location';
       const next   = weather.hourly?.findIndex(h => h.precipProb >= 50) ?? -1;
-      if (aqiVal > 100) items.push({ icon:'🌿', bg:'rgba(249,115,22,.18)', title: aqiVal > 150 ? 'Unhealthy Air Quality' : 'Moderate AQI', desc:'AQI '+aqiVal+' · '+locStr, time:'Right now', badge:'Active', cls:'active-badge' });
-      else if (aqiVal > 0) items.push({ icon:'🌿', bg:'rgba(34,197,94,.15)', title:'Air Quality Good', desc:'AQI '+aqiVal+' — safe outdoors', time:timeAgo(ts)||'Right now', badge:'Good', cls:'upcoming-badge' });
-      if (next >= 0) { const pct = weather.hourly[next].precipProb; items.push({ icon:'🌧', bg:'rgba(59,130,246,.18)', title: pct>=70?'Heavy Rain Expected':'Rain Possible', desc:pct+'% chance · '+locStr, time:next===0?'Now':'In '+next+'h', badge:'Upcoming', cls:'upcoming-badge' }); }
+      if (aqiVal > 100) items.push({ icon:'\u{1F33F}', bg:'rgba(249,115,22,.18)', title: aqiVal > 150 ? 'Unhealthy Air Quality' : 'Moderate AQI', desc:'AQI '+aqiVal+' · '+locStr, time:'Right now', badge:'Active', cls:'active-badge' });
+      else if (aqiVal > 0) items.push({ icon:'\u{1F33F}', bg:'rgba(34,197,94,.15)', title:'Air Quality Good', desc:'AQI '+aqiVal+' — safe outdoors', time:timeAgo(ts)||'Right now', badge:'Good', cls:'upcoming-badge' });
+      if (next >= 0) { const pct = weather.hourly[next].precipProb; items.push({ icon:'\u{1F327}', bg:'rgba(59,130,246,.18)', title: pct>=70?'Heavy Rain Expected':'Rain Possible', desc:pct+'% chance · '+locStr, time:next===0?'Now':'In '+next+'h', badge:'Upcoming', cls:'upcoming-badge' }); }
       if (uv >= 7) items.push({ icon:'☀️', bg:'rgba(234,179,8,.18)', title: uv>=10?'Extreme UV Alert':'High UV Index', desc:'UV '+uv+' — use sunscreen', time:'Right now', badge:uv>=10?'Extreme':'High', cls:'active-badge' });
-      if (wind >= 40) items.push({ icon:'💨', bg:'rgba(139,92,246,.18)', title: wind>=60?'Strong Wind Warning':'Gusty Winds', desc:Math.round(wind)+' km/h · '+locStr, time:'Right now', badge:'Active', cls:'active-badge' });
+      if (wind >= 40) items.push({ icon:'\u{1F4A8}', bg:'rgba(139,92,246,.18)', title: wind>=60?'Strong Wind Warning':'Gusty Winds', desc:Math.round(wind)+' km/h · '+locStr, time:'Right now', badge:'Active', cls:'active-badge' });
     }
     if (items.length === 0) items.push(
-      { icon:'🌧', bg:'rgba(59,130,246,.15)', title:'Heavy Rain Alert',  desc:'Heavy rain expected in your area', time:'Today',    badge:'Active',   cls:'active-badge'   },
-      { icon:'💨', bg:'rgba(249,115,22,.15)', title:'Strong Wind Alert', desc:'Winds up to 40 km/h detected',    time:'Today',    badge:'Active',   cls:'active-badge'   },
+      { icon:'\u{1F327}', bg:'rgba(59,130,246,.15)', title:'Heavy Rain Alert',  desc:'Heavy rain expected in your area', time:'Today',    badge:'Active',   cls:'active-badge'   },
+      { icon:'\u{1F4A8}', bg:'rgba(249,115,22,.15)', title:'Strong Wind Alert', desc:'Winds up to 40 km/h detected',    time:'Today',    badge:'Active',   cls:'active-badge'   },
       { icon:'☀️', bg:'rgba(234,179,8,.15)',  title:'High UV Index',     desc:'UV may reach very high levels',   time:'Tomorrow', badge:'Upcoming', cls:'upcoming-badge' }
     );
     return items.slice(0, 3);
@@ -150,14 +162,19 @@
       '<span class="di-badge '+a.cls+'">'+a.badge+'</span></a>'
     ).join('');
     return '<div class="topbar-dropdown" id="nav-alerts-dd">'+
-      '<div class="dropdown-header"><span>Notifications'+upd+'</span><a href="'+ALERTS_HREF+'">View all →</a></div>'+
+      '<div class="dropdown-header">'+
+        '<span>Notifications'+upd+'</span>'+
+        '<div style="display:flex;gap:10px;align-items:center">'+
+          '<button onclick="window._navClearAlerts(event)" style="background:none;border:none;cursor:pointer;font-size:var(--text-xs);color:var(--color-muted);font-weight:500;padding:0;opacity:.7" title="Clear all notifications">Clear all</button>'+
+          '<a href="'+ALERTS_HREF+'" style="font-size:var(--text-xs);color:var(--color-brand);font-weight:600;text-decoration:none">View all →</a>'+
+        '</div>'+
+      '</div>'+
       rows+
       '<div style="padding:10px 16px;text-align:center"><a href="'+ALERTS_HREF+'" style="font-size:var(--text-xs);color:var(--color-brand);font-weight:600;text-decoration:none">Manage alert preferences</a></div>'+
       '</div>';
   }
 
-
-  /* ── 5. PROFILE HTML ─────────────────────────────────────── */
+  /* ── 5. PROFILE HTML ─────────────────────────────────────────── */
   function buildProfileHTML() {
     const { weather, aqi, location, ts } = getLiveData();
     const cur = document.documentElement.getAttribute('data-theme') || 'dark';
@@ -166,8 +183,8 @@
     let wb = '';
     if (weather && aqi) {
       const score = calcScore(weather, aqi.current.aqi);
-      const wIcons = {0:'☀️',1:'🌤',2:'⛅',3:'☁️',45:'🌫',61:'🌧',63:'🌧',65:'🌧',71:'🌨',80:'🌦',95:'⛈'};
-      const wIcon = wIcons[weather.current.weatherCode] || '🌡';
+      const wIcons = {0:'☀️',1:'\u{1F324}',2:'\u{1F324}',3:'☁️',45:'\u{1F32B}️',61:'\u{1F327}️',63:'\u{1F327}️',65:'\u{1F327}️',71:'\u{1F328}️',80:'\u{1F326}️',95:'⛈️'};
+      const wIcon = wIcons[weather.current.weatherCode] || '\u{1F321}️';
       const sc = score >= 80 ? '#22c55e' : score >= 60 ? '#eab308' : '#f97316';
       wb = '<div style="padding:10px 14px 2px;display:flex;gap:8px">'+
         '<div style="flex:1;background:var(--bg-input);border-radius:10px;padding:9px 11px">'+
@@ -240,11 +257,9 @@
     });
   }
 
-
-  /* ── 6. WIRE BUTTONS ─────────────────────────────────────── */
+  /* ── 6. WIRE BUTTONS ─────────────────────────────────────────── */
   function injectDropdowns() {
     document.querySelectorAll('.topbar-actions').forEach(bar => {
-      /* Bell */
       const bell = bar.querySelector('[aria-label="Notifications"]');
       if (bell && !bell._n) {
         bell._n = 1;
@@ -254,7 +269,6 @@
           openPortal(bell, buildNotifHTML(), null);
         });
       }
-      /* Avatar */
       const av = bar.querySelector('.avatar-btn');
       if (av && !av._n) {
         av._n = 1;
@@ -280,25 +294,38 @@
     }
   }
 
-  /* ── 6b. ALERTS BADGE (consistent across all pages) ───────── */
+  /* ── 6b. ALERTS BADGE ────────────────────────────────────────────── */
   function updateAlertsBadge() {
     const { weather, aqi } = getLiveData();
-    const aqiVal = aqi?.current?.aqi ?? 78;
-    const uv = weather?.current?.uvIndex ?? 8;
-    let count = 2; // rain + wind always active
-    if (uv >= 7) count++;
-    if (aqiVal > 100) count++;
-    const sig = 'c' + count;
-    let seen = null;
-    try { seen = localStorage.getItem('aerosense_alerts_seen_sig'); } catch (e) {}
-    const unseen = (seen === sig) ? 0 : count;
+    const aqiVal = aqi?.current?.aqi        ?? 0;
+    const uv     = weather?.current?.uvIndex ?? 0;
+    let count = 2;
+    if (uv     >= 7)   count++;
+    if (aqiVal > 100)  count++;
+    let seenCount = -1;
+    try { seenCount = parseInt(localStorage.getItem('aerosense_alerts_seen') || '-1', 10); } catch (e) {}
+    const unseen = (seenCount >= 0 && seenCount >= count) ? 0 : count;
     document.querySelectorAll('.alerts-badge').forEach(el => {
       el.textContent = unseen;
       el.style.display = unseen ? '' : 'none';
     });
   }
 
-  /* ── 7. BOOT ─────────────────────────────────────────────── */
+  /* ── 7. CLEAR-ALL HANDLER ─────────────────────────────────────────── */
+  window._navClearAlerts = function(e) {
+    if (e) e.stopPropagation();
+    const { weather, aqi } = getLiveData();
+    const aqiVal = aqi?.current?.aqi ?? 0;
+    const uv     = weather?.current?.uvIndex ?? 0;
+    let count = 2;
+    if (uv >= 7)    count++;
+    if (aqiVal > 100) count++;
+    try { localStorage.setItem('aerosense_alerts_seen', String(count)); } catch (_) {}
+    updateAlertsBadge();
+    closeAll();
+  };
+
+  /* ── 8. BOOT ───────────────────────────────────────────────────── */
   function boot() {
     injectPNGLogo();
     setupThemeToggle();
@@ -310,6 +337,16 @@
     document.addEventListener('DOMContentLoaded', boot);
   } else {
     boot();
+  }
+
+  /* ── 9. SW UPDATE LISTENER ─────────────────────────────────────────── */
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'SW_UPDATED') {
+        console.log('[AeroSense] SW updated to', e.data.version, '— reloading for fresh code.');
+        window.location.reload();
+      }
+    });
   }
 
 })();

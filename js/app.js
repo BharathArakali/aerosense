@@ -6,6 +6,8 @@
 import Storage from './storage.js';
 import { fetchWeather, estimateRainArrival, windDirLabel } from './weather.js';
 import { fetchAQI, getHealthAdvisory } from './aqi.js';
+import { checkAndFireAlertNotifications } from './notify.js';
+import COUNTRIES, { findCountry } from './countries.js';
 import {
   getWeatherInfo, getAQILabel, getUVLabel,
   calcAeroScore, getAeroScoreLabel,
@@ -14,7 +16,7 @@ import {
   convertTemp, tempUnit, convertWind, windUnit,
   convertPressure, pressureUnit, convertDistance, distanceUnit,
   formatHour, formatDay, formatSunTime, timeAgo,
-  reverseGeocode, geocode,
+  reverseGeocode, geocode, detectCountry,
   el, qs, qsa, debounce,
   buildGaugeRing, buildSparkline,
   calcHistoricalNormals, percentDiff,
@@ -37,10 +39,14 @@ let state = {
 async function init() {
   state.settings = Storage.getSettings();
   applyTheme(state.settings.theme);
-  showLoading('Initializing AeroSense...');
   setupEventListeners();
   setupOfflineDetection();
   setupInstallPrompt();
+
+  // Only show the loading overlay if there is nothing cached to show yet
+  const hasCachedData = !!(Storage.getCachedWeather() && Storage.getCachedLocation());
+  if (!hasCachedData) showLoading('Initializing AeroSense...');
+
   await loadData();
   hideLoading();
   scheduleRefresh();
@@ -71,102 +77,167 @@ function syncThemeButtons(theme) {
 
 // ---- Data Loading ----
 async function loadData(forceRefresh = false) {
-  setLoadingText('Getting your location...');
+  const cw         = Storage.getCachedWeather();
+  const ca         = Storage.getCachedAQI();
+  const cachedLoc  = Storage.getCachedLocation();
 
-  // Try cached location first
-  let loc = Storage.getCachedLocation();
+  // ── STEP 1: Instant cache-first render ────────────────────────────
+  // If we have cached data paint it immediately so the user sees content
+  // at once rather than staring at a spinner while the network is hit.
+  // Skip when forceRefresh=true (e.g. city change) to avoid briefly showing
+  // stale data for the wrong location.
+  if (!forceRefresh && cw && cachedLoc) {
+    state.weather       = cw.data;
+    state.aqi           = ca?.data ?? null;
+    state.location      = cachedLoc;
+    state.locationName  = cachedLoc.name || 'Your Location';
+    state.lastRefresh   = cw.ts;
+    hideLoading();
+    renderAll();
 
-  if (!loc || forceRefresh) {
+    // Cache is still fresh — skip the network call entirely
+    const cacheAge  = Date.now() - cw.ts;
+    const refreshMs = (state.settings.updateFrequency || 10) * 60 * 1000;
+    if (!forceRefresh && cacheAge < refreshMs) {
+      updateLastRefreshDisplay();
+      return;
+    }
+  }
+
+  // ── STEP 2: Resolve coordinates ───────────────────────────────────
+  let loc = cachedLoc;
+
+  if (!loc) {
+    // Only attempt GPS if we genuinely have no cached location.
+    // forceRefresh bypasses the cache-freshness check above but must NOT
+    // trigger a new GPS fix when the caller has already set a location
+    // (e.g. selectCity stores the chosen city before calling loadData).
     try {
+      setLoadingText('Getting your location...');
       loc = await getUserLocation();
       Storage.cacheLocation(loc);
+      // First-launch: detect country for Browse-by-Country search seed
+      if (!Storage.getUserCountry()) {
+        detectCountry(loc.lat, loc.lon).then(c => { if (c) Storage.setUserCountry(c); });
+      }
     } catch {
-      // Location denied – show city search
-      showCitySearch();
-      // Try loading from cache
-      const cw = Storage.getCachedWeather();
-      const ca = Storage.getCachedAQI();
-      if (cw) { state.weather = cw.data; state.aqi = ca?.data; renderAll(); }
+      if (!cw) {
+        // No cache, no GPS — let the user search manually
+        showCitySearch();
+        return;
+      }
+      // GPS failed but cached data is available — render it
+      state.weather     = cw.data;
+      state.aqi         = ca?.data ?? null;
+      state.lastRefresh = cw.ts;
+      // Re-persist location from memory if we had cleared it (e.g. refresh button)
+      if (state.location) Storage.cacheLocation(state.location);
+      hideLoading();
+      renderAll();
+      updateLastRefreshDisplay();
       return;
     }
   }
 
   state.location = loc;
-  state.locationName = loc.name || await reverseGeocode(loc.lat, loc.lon);
-  if (!loc.name) {
-    loc.name = state.locationName;
-    Storage.cacheLocation(loc);
+
+  // Resolve a display name without blocking the weather fetch.
+  // Update the header text the moment geocoding returns.
+  if (loc.name) {
+    state.locationName = loc.name;
+  } else {
+    state.locationName = 'Your Location';
+    reverseGeocode(loc.lat, loc.lon).then(name => {
+      state.locationName = name;
+      loc.name = name;
+      Storage.cacheLocation(loc);
+      qsa('.hero-location-name').forEach(e => { e.textContent = name; });
+    });
   }
 
-  setLoadingText('Fetching weather data...');
-
-  // Try fetching fresh data; fall back to cache if offline
+  // ── STEP 3: Fetch fresh data in the background ────────────────────
   try {
     const [weather, aqiData] = await Promise.all([
       fetchWeather(loc.lat, loc.lon),
       fetchAQI(loc.lat, loc.lon),
     ]);
     state.weather = weather;
-    state.aqi = aqiData;
+    state.aqi     = aqiData;
     Storage.cacheWeather(weather);
     Storage.cacheAQI(aqiData);
     state.lastRefresh = Date.now();
 
-    // Append to history
     Storage.appendHistory({
-      temp: weather.current.temp,
-      aqi: aqiData.current.aqi,
+      temp:     weather.current.temp,
+      aqi:      aqiData.current.aqi,
       humidity: weather.current.humidity,
-      wind: weather.current.windSpeed,
+      wind:     weather.current.windSpeed,
     });
     hideOfflineBanner();
+    checkAndFireAlertNotifications(weather, aqiData);
   } catch (err) {
     console.warn('[AeroSense] Fetch failed, using cache:', err);
-    const cw = Storage.getCachedWeather();
-    const ca = Storage.getCachedAQI();
-    if (cw) {
-      state.weather = cw.data;
-      state.aqi = ca?.data;
-      showOfflineBanner();
-    } else {
+    if (!cw) {
       showError('Unable to load weather data. Please check your connection.');
       return;
     }
+    showOfflineBanner();
   }
 
+  hideLoading();   // no-op if already hidden via cache path
   renderAll();
+  updateLastRefreshDisplay();
 }
 
 // ---- Geolocation ----
 function getUserLocation() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) { reject(new Error('Geolocation not supported')); return; }
+    // enableHighAccuracy: false  → uses WiFi/cell-tower fix (~200–500 ms vs 5–10 s for GPS)
+    // maximumAge: 600000         → accept a cached GPS fix up to 10 min old (no extra wait)
+    // timeout: 5000              → give up and fall back to cache after 5 s
     navigator.geolocation.getCurrentPosition(
       pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
       err => reject(err),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
     );
   });
 }
 
 // ---- Render All ----
+// Critical path renders first (above-the-fold, user-facing content).
+// Heavy/below-the-fold renders are deferred to idle time so they don't
+// block the initial paint.
 function renderAll() {
   if (!state.weather) return;
+
+  // ── Critical: render immediately ─────────────────────────────────
   renderHero();
   renderMetricsGrid();
-  renderAQIPanel();
-  renderScores();
-  renderHomeAqiChart();
-  renderTodayVsNormal();
   renderHourlyForecast();
+  renderRainForecast();
   renderDailyForecast();
-  renderSunriseSunset();
   renderHealthAdvisory();
-  renderOutdoorRecs();
-  renderSavedPlaces();
-  renderInstallPrompt();
   updateAlertsCount();
-  animateWeatherBackground();
+
+  // ── Deferred: schedule during browser idle time ───────────────────
+  const deferred = () => {
+    renderAQIPanel();
+    renderScores();
+    renderHomeAqiChart();
+    renderTodayVsNormal();
+    renderSunriseSunset();
+    renderOutdoorRecs();
+    renderSavedPlaces();
+    renderInstallPrompt();
+    animateWeatherBackground();
+  };
+
+  if ('requestIdleCallback' in window) {
+    requestIdleCallback(deferred, { timeout: 2000 });
+  } else {
+    setTimeout(deferred, 0);
+  }
 }
 
 // ---- Hero Card ----
@@ -241,7 +312,7 @@ function renderMetricsGrid() {
     },
     {
       id: 'metric-pressure',
-      label: 'Pressure', labelIcon: '🌡',
+      label: 'Pressure', labelIcon: '🌡️',
       value: `${convertPressure(current.pressure, units.pressure)}`,
       sub: pressureUnit(units.pressure),
       color: '#6366f1',
@@ -249,7 +320,7 @@ function renderMetricsGrid() {
     },
     {
       id: 'metric-visibility',
-      label: 'Visibility', labelIcon: '👁',
+      label: 'Visibility', labelIcon: '👁️',
       value: `${convertDistance(current.visibility, units.distance)}`,
       sub: distanceUnit(units.distance),
       color: '#0ea5e9',
@@ -269,7 +340,7 @@ function renderMetricsGrid() {
   if (!grid) return;
   grid.innerHTML = metrics.map(m => `
     <div class="metric-card card-lift" id="${m.id}">
-      <div class="mc-label">${m.labelIcon} ${m.label}</div>
+      <div class="mc-label"><span class="mc-label-icon">${m.labelIcon}</span> ${m.label}</div>
       <div class="mc-value" style="color:${m.color}">${m.value}</div>
       <div class="mc-sub">${m.sub}</div>
       ${m.sparkValues ? `<div class="mc-sparkline" id="${m.id}-spark"></div>` : ''}
@@ -380,31 +451,82 @@ function renderScores() {
   });
 }
 
-// Quality color from a 0-100 sub-score
-function factorColor(q) {
-  if (q >= 75) return '#22c55e';
-  if (q >= 50) return '#eab308';
-  if (q >= 30) return '#f97316';
-  return '#ef4444';
-}
+function clampPct(n) { return Math.max(0, Math.min(100, Math.round(n))); }
 
-// Build per-factor 0-100 quality scores from the same logic as calcAeroScore
+// ── Safety-level color helpers ────────────────────────────────────────────────
+// Each returns a hex color: green = safe, yellow = moderate,
+// orange = unhealthy/uncomfortable, red = hazardous.
+function aqiColor(v)  { return v<=50?'#22c55e':v<=100?'#eab308':v<=150?'#f97316':'#ef4444'; }
+function tempColor(v) { return v>=18&&v<=28?'#22c55e':v>=10&&v<=35?'#eab308':'#ef4444'; }
+function humColor(v)  { return v>=35&&v<=65?'#22c55e':v>=20&&v<=80?'#eab308':'#f97316'; }
+function uvColor(v)   { return v<=2?'#22c55e':v<=5?'#eab308':v<=7?'#f97316':'#ef4444'; }
+function windColor(v) { return v<20?'#22c55e':v<40?'#eab308':v<60?'#f97316':'#ef4444'; }
+
+/**
+ * Build per-factor display data for the AeroScore breakdown bars.
+ *
+ * Each factor has:
+ *  fill  – bar width as % of the bar track, scaled to a sensible "max" for
+ *           that metric so 100% fill = clearly problematic/extreme.
+ *          Humidity fills 1:1 with its % value (0-100 natural scale).
+ *          Other metrics are mapped to a 0-100 track over their meaningful range.
+ *  color – safety-level color (green → yellow → orange → red) so the user
+ *          immediately sees whether the value is safe without needing to know thresholds.
+ *  q     – internal 0-100 quality score kept for aeroAdvice worst-factor logic.
+ *  val   – formatted display string shown on the right of the bar.
+ */
 function aeroFactors({ aqi, temp, humidity, uv, wind }) {
-  const units = state.settings.units;
-  const aqiPenalty = aqi <= 50 ? 0 : aqi <= 100 ? 10 : aqi <= 150 ? 20 : aqi <= 200 ? 35 : 50;
-  const tempDev = Math.min(Math.abs(temp - 23) / 5, 3) * 5;
-  const humDev = humidity < 20 || humidity > 80 ? 15 : humidity < 30 || humidity > 70 ? 8 : humidity < 40 || humidity > 60 ? 3 : 0;
-  const uvPenalty = uv <= 2 ? 0 : uv <= 5 ? 3 : uv <= 7 ? 8 : uv <= 10 ? 15 : 22;
-  const windPenalty = wind < 10 ? 0 : wind < 20 ? 2 : wind < 40 ? 6 : wind < 60 ? 12 : 18;
+  const units     = state.settings.units;
+  // Quality penalties (for aeroAdvice worst-factor selection only)
+  const aqiP  = aqi <= 50 ? 0 : aqi <= 100 ? 10 : aqi <= 150 ? 20 : aqi <= 200 ? 35 : 50;
+  const tDev  = Math.min(Math.abs(temp - 23) / 5, 3) * 5;
+  const hDev  = humidity<20||humidity>80?15:humidity<30||humidity>70?8:humidity<40||humidity>60?3:0;
+  const uvP   = uv <= 2 ? 0 : uv <= 5 ? 3 : uv <= 7 ? 8 : uv <= 10 ? 15 : 22;
+  const wP    = wind < 10 ? 0 : wind < 20 ? 2 : wind < 40 ? 6 : wind < 60 ? 12 : 18;
+
   return [
-    { key: 'aqi',      label: 'Air Quality', q: clampPct(100 - aqiPenalty * 2),   val: `${Math.round(aqi)} AQI` },
-    { key: 'temp',     label: 'Temperature', q: clampPct(100 - tempDev * 6.7),    val: `${convertTemp(temp, units.temperature)}${tempUnit(units.temperature)}` },
-    { key: 'humidity', label: 'Humidity',    q: clampPct(100 - humDev * 6.7),     val: `${Math.round(humidity)}%` },
-    { key: 'uv',       label: 'UV Index',    q: clampPct(100 - uvPenalty * 4.5),  val: `${Math.round(uv)}` },
-    { key: 'wind',     label: 'Wind',        q: clampPct(100 - windPenalty * 5.5),val: `${convertWind(wind, units.wind)} ${windUnit(units.wind)}` },
+    {
+      key: 'aqi', label: 'Air Quality',
+      // Scale: 0 AQI = empty bar, 200 AQI = full bar (200 = clearly unhealthy)
+      fill:  clampPct(aqi / 200 * 100),
+      color: aqiColor(aqi),
+      q:     clampPct(100 - aqiP * 2),
+      val:   `${Math.round(aqi)} AQI`,
+    },
+    {
+      key: 'temp', label: 'Temperature',
+      // Scale: −5°C = empty, 45°C = full (50-degree window covers realistic extremes)
+      fill:  clampPct((temp + 5) / 50 * 100),
+      color: tempColor(temp),
+      q:     clampPct(100 - tDev * 6.7),
+      val:   `${convertTemp(temp, units.temperature)}${tempUnit(units.temperature)}`,
+    },
+    {
+      key: 'humidity', label: 'Humidity',
+      // Humidity IS already a 0-100% value — fill 1:1 so the bar matches the label
+      fill:  clampPct(humidity),
+      color: humColor(humidity),
+      q:     clampPct(100 - hDev * 6.7),
+      val:   `${Math.round(humidity)}%`,
+    },
+    {
+      key: 'uv', label: 'UV Index',
+      // Scale: UV 0 = empty, UV 12 = full (12+ = extreme)
+      fill:  clampPct(uv / 12 * 100),
+      color: uvColor(uv),
+      q:     clampPct(100 - uvP * 4.5),
+      val:   `UV ${Math.round(uv)}`,
+    },
+    {
+      key: 'wind', label: 'Wind',
+      // Scale: 0 km/h = empty, 80 km/h = full (80+ = dangerous)
+      fill:  clampPct(wind / 80 * 100),
+      color: windColor(wind),
+      q:     clampPct(100 - wP * 5.5),
+      val:   `${convertWind(wind, units.wind)} ${windUnit(units.wind)}`,
+    },
   ];
 }
-function clampPct(n) { return Math.max(0, Math.min(100, Math.round(n))); }
 
 // Short advisory line based on the weakest factor
 function aeroAdvice(score, factors) {
@@ -436,15 +558,14 @@ function renderAeroScoreCard(score, info, metrics) {
 
   const factorsEl = card.querySelector('#aero-factors');
   if (factorsEl) {
-    factorsEl.innerHTML = factors.map(f => {
-      const c = factorColor(f.q);
-      return `
-        <div class="aero-factor">
-          <span class="af-label">${f.label}</span>
-          <span class="af-bar"><span class="af-bar-fill" style="width:${f.q}%;background:${c}"></span></span>
-          <span class="af-val">${f.val}</span>
-        </div>`;
-    }).join('');
+    factorsEl.innerHTML = factors.map(f => `
+      <div class="aero-factor">
+        <span class="af-label">${f.label}</span>
+        <span class="af-bar">
+          <span class="af-bar-fill" style="width:${Math.max(f.fill, 2)}%;background:${f.color};transition:width 1.2s cubic-bezier(.4,0,.2,1)"></span>
+        </span>
+        <span class="af-val" style="color:${f.color}">${f.val}</span>
+      </div>`).join('');
   }
 }
 
@@ -646,6 +767,123 @@ function renderHourlyForecast() {
   }).join('');
 }
 
+// ---- Rain Forecast ----
+function renderRainForecast() {
+  const { weather } = state;
+  const card    = el('rain-forecast-card');
+  const content = el('rain-forecast-content');
+  if (!card || !content || !weather?.hourly?.length) return;
+
+  card.style.display = '';
+  const hourly = weather.hourly.slice(0, 24);
+  const THRESHOLD = 40; // min % to count as rain
+
+  // Find first rain window
+  let rainStart = -1, rainEnd = -1;
+  for (let i = 0; i < hourly.length; i++) {
+    if (hourly[i].precipProb >= THRESHOLD) {
+      if (rainStart === -1) rainStart = i;
+      rainEnd = i;
+    } else if (rainStart !== -1 && i - rainEnd > 2) {
+      break; // gap of 2+ dry hours ends the window
+    }
+  }
+
+  if (rainStart === -1) {
+    content.innerHTML = `
+      <div style="display:flex;align-items:center;gap:16px;padding:4px 0 12px">
+        <div style="font-size:2rem">☀️</div>
+        <div>
+          <div style="font-weight:700;font-size:var(--text-lg)">No rain expected</div>
+          <div style="opacity:.5;font-size:var(--text-sm);margin-top:3px">Clear for the next 24 hours</div>
+        </div>
+      </div>
+      ${buildRainBar(hourly)}`;
+    return;
+  }
+
+  // Peak probability within the window
+  let peakIdx = rainStart;
+  for (let i = rainStart; i <= rainEnd; i++) {
+    if (hourly[i].precipProb > hourly[peakIdx].precipProb) peakIdx = i;
+  }
+  const peakProb = hourly[peakIdx].precipProb;
+  const peakCode = hourly[peakIdx].weatherCode;
+  const intensity = rainIntensity(peakProb, peakCode);
+
+  const durationHrs = rainEnd - rainStart + 1;
+  const durationStr = durationHrs <= 1 ? 'about 1 hour'
+                    : durationHrs < 24  ? `~${durationHrs} hours`
+                    :                     'most of the day';
+
+  const arrivalStr = rainStart === 0 ? '🌧 Raining now'
+                   : rainStart === 1 ? '🕐 Starts in about 1 hour'
+                   :                   `🕐 Starts in ~${rainStart} hours`;
+
+  const endNote = rainEnd < hourly.length - 1
+    ? `Ends around ${formatHour(hourly[Math.min(rainEnd + 1, hourly.length - 1)].time)}`
+    : 'Continues through the day';
+
+  content.innerHTML = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="font-size:1.5rem">${intensity.emoji}</span>
+          <span style="font-weight:800;font-size:var(--text-xl);color:${intensity.color}">${intensity.label} Rain</span>
+        </div>
+        <div style="font-size:var(--text-sm);font-weight:600;margin-bottom:3px">${arrivalStr}</div>
+        <div style="font-size:var(--text-sm);opacity:.55">Duration: ${durationStr}</div>
+        <div style="font-size:var(--text-sm);opacity:.55">${endNote}</div>
+      </div>
+      <div style="text-align:center;flex-shrink:0;background:${intensity.bg};border-radius:var(--radius-lg);padding:10px 14px">
+        <div style="font-size:var(--text-2xl);font-weight:800;color:${intensity.color}">${peakProb}%</div>
+        <div style="font-size:10px;opacity:.6;margin-top:1px">peak chance</div>
+      </div>
+    </div>
+    ${buildRainBar(hourly)}`;
+}
+
+function rainIntensity(prob, weatherCode) {
+  if ([65, 82, 95, 96, 99].includes(weatherCode))
+    return { label: 'Heavy',    color: '#2563eb', bg: 'rgba(37,99,235,.1)',   emoji: '⛈️' };
+  if ([63, 81].includes(weatherCode))
+    return { label: 'Moderate', color: '#3b82f6', bg: 'rgba(59,130,246,.1)',  emoji: '🌧️' };
+  if ([51, 53, 55, 61, 80].includes(weatherCode))
+    return { label: 'Light',    color: '#60a5fa', bg: 'rgba(96,165,250,.1)',  emoji: '🌦️' };
+  if (prob >= 80)
+    return { label: 'Heavy',    color: '#2563eb', bg: 'rgba(37,99,235,.1)',   emoji: '⛈️' };
+  if (prob >= 60)
+    return { label: 'Moderate', color: '#3b82f6', bg: 'rgba(59,130,246,.1)',  emoji: '🌧️' };
+  return   { label: 'Light',    color: '#60a5fa', bg: 'rgba(96,165,250,.1)',  emoji: '🌦️' };
+}
+
+function buildRainBar(hourly) {
+  const bars = hourly.slice(0, 12).map((h, i) => {
+    const prob   = h.precipProb ?? 0;
+    const pct    = Math.max(2, prob); // at least 2% height so container isn't blank
+    const barH   = Math.round(pct * 0.54); // max ≈ 54px at 100%
+    // Dry bars: a visible muted gray; wet bars: blue gradient
+    const color  = prob < 40 ? 'rgba(96,165,250,.28)'    // blue-400/28 — light blue for dry/low-rain bars
+                 : prob < 60 ? '#93c5fd'                  // blue-300
+                 : prob < 80 ? '#60a5fa'                  // blue-400
+                 :              '#3b82f6';                 // blue-500
+    const labelVisible = prob >= 5;
+    return `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;min-width:0">
+        <div style="font-size:9px;font-weight:600;opacity:.65;text-align:center;min-height:13px;color:${prob>=40?color:'inherit'}">${labelVisible ? prob + '%' : ''}</div>
+        <div style="position:relative;display:flex;align-items:flex-end;height:54px;width:100%;background:rgba(59,130,246,.09);border-radius:4px;overflow:hidden">
+          <div style="width:100%;border-radius:3px 3px 0 0;background:${color};height:${barH}px;transition:height .4s ease"></div>
+        </div>
+        <div style="font-size:9px;opacity:.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;text-align:center">${i === 0 ? 'Now' : formatHour(h.time)}</div>
+      </div>`;
+  }).join('');
+
+  return `<div style="margin-top:4px">
+    <div style="font-size:10px;opacity:.4;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">Precip Probability – Next 12h</div>
+    <div style="display:flex;gap:3px">${bars}</div>
+  </div>`;
+}
+
 // ---- Daily Forecast ----
 function renderDailyForecast() {
   const { weather, settings } = state;
@@ -755,15 +993,17 @@ function renderSavedPlaces() {
   const places = Storage.getSavedPlaces();
   const list = el('saved-places-list');
   if (!list) return;
-  list.innerHTML = places.slice(0, 3).map(p => `
-    <div class="saved-place-item" onclick="loadPlace(${p.lat},${p.lon},'${p.name}')">
+  list.innerHTML = places.slice(0, 3).map((p, i) => `
+    <div class="saved-place-item" onclick="loadPlace(${p.lat},${p.lon},'${p.name.replace(/'/g,"\\'")}',${i})">
       <div class="spi-icon">📍</div>
       <div class="spi-body">
         <div class="spi-name">${p.name}</div>
-        <div class="spi-state">${p.state}</div>
+        <div class="spi-state">${p.state || '–'}</div>
       </div>
-      <div class="spi-temp">${p.temp}°</div>
-      <div class="spi-cond">${p.condition}</div>
+      <div class="spi-right">
+        <span class="spi-temp">${p.temp}°</span>
+        <span class="spi-cond">${p.condition}</span>
+      </div>
     </div>
   `).join('');
 }
@@ -781,10 +1021,11 @@ function activeAlertCount() {
 }
 function updateAlertsCount() {
   const count = activeAlertCount();
-  const sig = 'c' + count;
-  let seen = null;
-  try { seen = localStorage.getItem('aerosense_alerts_seen_sig'); } catch (e) {}
-  const unseen = (seen === sig) ? 0 : count;
+  // Use the same key as nav.js and alerts.js so marking-seen in any page
+  // is respected when the user returns to Home.
+  let seenCount = -1;
+  try { seenCount = parseInt(localStorage.getItem('aerosense_alerts_seen') || '-1', 10); } catch (e) {}
+  const unseen = (seenCount >= 0 && seenCount >= count) ? 0 : count;
   qsa('.alerts-badge').forEach(el => {
     el.textContent = unseen;
     el.style.display = unseen ? '' : 'none';
@@ -814,7 +1055,7 @@ function renderFullscreenWeather() {
 
   const fsTempEl = fsEl.querySelector('.fs-temp'); if (fsTempEl) fsTempEl.textContent = `${tempVal}${tUnit}`;
   const fsLocEl = fsEl.querySelector('.fs-location span'); if (fsLocEl) fsLocEl.textContent = locationName;
-  const fsCondEl = fsEl.querySelector('.fs-condition'); if (fsCondEl) fsCondEl.innerHTML = `${info.desc} ${info.icon}`;
+  const fsCondEl = fsEl.querySelector('.fs-condition'); if (fsCondEl) fsCondEl.textContent = `${info.desc} ${info.icon}`;
   const fsFeelsEl = fsEl.querySelector('.fs-feels'); if (fsFeelsEl) fsFeelsEl.textContent = `Feels like ${feelsVal}${tUnit}`;
 
   if (settings.dynamicAnimations) {
@@ -1064,6 +1305,108 @@ async function handleCitySearch(query) {
   `).join('');
 }
 
+// ---- "Browse by Country" search mode (additive — doesn't touch the
+// free-text #cs-mode-search flow above) ----
+let csSelectedCountry = null; // { code, name }
+
+function renderCountryList(query) {
+  const listEl = el('country-results');
+  if (!listEl) return;
+  const q = (query || '').trim().toLowerCase();
+  let list;
+  if (!q) {
+    // No query yet: pin the detected country (if any) at the top so the
+    // user can jump straight into it, then show the rest alphabetically.
+    const detected = Storage.getUserCountry();
+    const detectedEntry = detected ? findCountry(detected.code) : null;
+    list = detectedEntry
+      ? [detectedEntry, ...COUNTRIES.filter(c => c.code !== detectedEntry.code)]
+      : COUNTRIES;
+  } else {
+    list = COUNTRIES.filter(c => c.name.toLowerCase().includes(q));
+  }
+  if (!list.length) {
+    listEl.innerHTML = '<div style="padding:16px;opacity:.6;text-align:center">No countries found</div>';
+    return;
+  }
+  const detected = Storage.getUserCountry();
+  listEl.innerHTML = list.slice(0, 60).map(c => `
+    <div class="city-result-item" onclick="selectCountry('${c.code}', '${c.name.replace(/'/g, "\\'")}')">
+      <span class="cr-flag-badge">${c.code}</span>
+      <div>
+        <div class="cr-name">${c.name}${detected && detected.code === c.code ? ' <span style="opacity:.55;font-weight:500;font-size:12px">(detected)</span>' : ''}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.selectCountry = (code, name) => {
+  csSelectedCountry = { code, name };
+  const stepCountry = el('cs-country-step');
+  const stepCity = el('cs-city-step');
+  const label = el('cs-selected-country-label');
+  if (stepCountry) stepCountry.style.display = 'none';
+  if (stepCity) stepCity.style.display = '';
+  if (label) label.textContent = `${name} (${code})`;
+  const cityInput = el('country-city-input');
+  const cityResults = el('country-city-results');
+  if (cityResults) cityResults.innerHTML = '<div style="padding:16px;text-align:center;opacity:.5;font-size:14px">Type a state or city name…</div>';
+  if (cityInput) { cityInput.value = ''; cityInput.focus(); }
+};
+
+function backToCountryStep() {
+  csSelectedCountry = null;
+  const stepCountry = el('cs-country-step');
+  const stepCity = el('cs-city-step');
+  if (stepCity) stepCity.style.display = 'none';
+  if (stepCountry) stepCountry.style.display = '';
+  const cityInput = el('country-city-input');
+  if (cityInput) cityInput.value = '';
+}
+
+async function handleCountryCitySearch(query) {
+  if (!csSelectedCountry || query.length < 2) return;
+  const results = await geocode(query);
+  const listEl = el('country-city-results');
+  if (!listEl) return;
+  const filtered = results.filter(r => (r.country_code || '').toUpperCase() === csSelectedCountry.code);
+  if (!filtered.length) {
+    listEl.innerHTML = `<div style="padding:16px;opacity:.6;text-align:center">No places found in ${csSelectedCountry.name}</div>`;
+    return;
+  }
+  // Reuses the existing window.selectCity handler — same markup pattern as
+  // the free-text search results, so nothing about city selection changes.
+  listEl.innerHTML = filtered.map(r => `
+    <div class="city-result-item" onclick="selectCity(${r.latitude},${r.longitude},'${r.name}, ${r.country_code}')">
+      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <div>
+        <div class="cr-name">${r.name}</div>
+        <div class="cr-country">${r.admin1 || ''}, ${r.country}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function setCitySearchMode(mode) {
+  qsa('.cs-tab').forEach(tab => {
+    const active = tab.dataset.mode === mode;
+    tab.classList.toggle('active', active);
+    tab.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  const modeSearch = el('cs-mode-search');
+  const modeCountry = el('cs-mode-country');
+  if (modeSearch) modeSearch.style.display = mode === 'search' ? '' : 'none';
+  if (modeCountry) modeCountry.style.display = mode === 'country' ? '' : 'none';
+  if (mode === 'country') {
+    // Reset to the country-picker step each time the tab is opened, and
+    // pre-render the list (pinning the detected country) right away.
+    backToCountryStep();
+    const input = el('country-search-input');
+    if (input) input.value = '';
+    renderCountryList('');
+  }
+}
+
 window.selectCity = async (lat, lon, name) => {
   hideCitySearch();
   const loc = { lat, lon, name };
@@ -1071,11 +1414,31 @@ window.selectCity = async (lat, lon, name) => {
   state.locationName = name;
   Storage.cacheLocation(loc);
   showLoading('Fetching weather...');
-  await loadData();
+  await loadData(true);  // forceRefresh=true: skip cache, fetch for the new city
   hideLoading();
 };
 
-window.loadPlace = async (lat, lon, name) => {
+window.loadPlace = async (lat, lon, name, index) => {
+  // Swap: save current location into the clicked slot so user can switch back
+  if (typeof index === 'number' && state.location) {
+    const places = Storage.getSavedPlaces();
+    if (index < places.length) {
+      const cur = state.location;
+      const curTemp = state.weather ? Math.round(state.weather.current.temp) : (places[index].temp || 0);
+      const curCond = state.weather
+        ? (getWeatherInfo(state.weather.current.weatherCode, state.weather.current.isDay)?.label || 'Unknown')
+        : (places[index].condition || 'Unknown');
+      places[index] = {
+        name:      cur.name || state.locationName || 'Current Location',
+        state:     '',
+        temp:      curTemp,
+        condition: curCond,
+        lat:       cur.lat,
+        lon:       cur.lon,
+      };
+      Storage.savePlaces(places);
+    }
+  }
   await window.selectCity(lat, lon, name);
 };
 
@@ -1100,6 +1463,28 @@ function setupEventListeners() {
   }
   const cityBackdrop = el('city-search-backdrop');
   if (cityBackdrop) cityBackdrop.addEventListener('click', hideCitySearch);
+
+  // Search-mode tabs (Search vs. By Country) — additive UI on top of the
+  // existing modal; switching tabs never touches the free-text search state.
+  qsa('.cs-tab').forEach(tab => {
+    tab.addEventListener('click', () => setCitySearchMode(tab.dataset.mode));
+  });
+
+  // "By Country" — country picker
+  const countrySearchInput = el('country-search-input');
+  if (countrySearchInput) {
+    countrySearchInput.addEventListener('input', debounce(e => renderCountryList(e.target.value), 200));
+  }
+
+  // "By Country" — back to country list
+  const countryBackBtn = el('cs-country-back');
+  if (countryBackBtn) countryBackBtn.addEventListener('click', backToCountryStep);
+
+  // "By Country" — state/city search scoped to the chosen country
+  const countryCityInput = el('country-city-input');
+  if (countryCityInput) {
+    countryCityInput.addEventListener('input', debounce(e => handleCountryCitySearch(e.target.value), 300));
+  }
 
   // Open city search from topbar
   const searchInput = el('topbar-search');

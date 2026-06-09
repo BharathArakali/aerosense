@@ -21,6 +21,12 @@
   <!-- Theme init: read stored preference before CSS renders to avoid flash -->
   <script>(function(){try{var s=JSON.parse(localStorage.getItem("aerosense_settings")||"{}");var t=s.theme||"dark";if(t==="system"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}document.documentElement.setAttribute("data-theme",t);}catch(e){document.documentElement.setAttribute("data-theme","dark");}})();</script>
 
+  <!-- Preconnect to API domains so the first fetch doesn't pay a cold TCP handshake -->
+  <link rel="preconnect" href="https://api.open-meteo.com"/>
+  <link rel="preconnect" href="https://air-quality-api.open-meteo.com"/>
+  <link rel="preconnect" href="https://geocoding-api.open-meteo.com"/>
+  <link rel="dns-prefetch" href="https://nominatim.openstreetmap.org"/>
+
   <!-- CSS -->
   <link rel="stylesheet" href="css/main.css"/>
   <link rel="stylesheet" href="css/dark.css"/>
@@ -69,12 +75,54 @@
 <div class="city-search-modal" id="city-search-modal" role="dialog" aria-label="City search">
   <div class="city-search-backdrop" id="city-search-backdrop"></div>
   <div class="city-search-box">
-    <div class="city-search-input-wrap">
-      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" id="city-search-input" placeholder="Search city or place..." autocomplete="off" autofocus/>
+
+    <!-- Mode tabs: free-text search vs. browse by country -->
+    <div class="cs-tabs" id="cs-tabs" role="tablist">
+      <button class="cs-tab active" data-mode="search" type="button" role="tab" aria-selected="true">Search</button>
+      <button class="cs-tab" data-mode="country" type="button" role="tab" aria-selected="false">By Country</button>
     </div>
-    <div class="city-results" id="city-results">
-      <div style="padding:16px;text-align:center;opacity:.5;font-size:14px">Type to search for a city…</div>
+
+    <!-- ── Mode 1: free-text city/place search (unchanged behaviour) ── -->
+    <div id="cs-mode-search">
+      <div class="city-search-input-wrap">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="city-search-input" placeholder="Search city or place..." autocomplete="off" autofocus/>
+      </div>
+      <div class="city-results" id="city-results">
+        <div style="padding:16px;text-align:center;opacity:.5;font-size:14px">Type to search for a city…</div>
+      </div>
+    </div>
+
+    <!-- ── Mode 2: browse by country, then state/city within it ── -->
+    <div id="cs-mode-country" style="display:none">
+
+      <!-- Step 1 — pick a country -->
+      <div id="cs-country-step">
+        <div class="city-search-input-wrap">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="country-search-input" placeholder="Search for a country..." autocomplete="off"/>
+        </div>
+        <div class="city-results" id="country-results">
+          <div style="padding:16px;text-align:center;opacity:.5;font-size:14px">Type to find a country, or pick your detected one below…</div>
+        </div>
+      </div>
+
+      <!-- Step 2 — search states/cities within the chosen country -->
+      <div id="cs-city-step" style="display:none">
+        <div class="cs-selected-country" id="cs-selected-country">
+          <button class="cs-country-back" id="cs-country-back" type="button" aria-label="Change country">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <span id="cs-selected-country-label"></span>
+        </div>
+        <div class="city-search-input-wrap">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="country-city-input" placeholder="Search states or cities..." autocomplete="off"/>
+        </div>
+        <div class="city-results" id="country-city-results">
+          <div style="padding:16px;text-align:center;opacity:.5;font-size:14px">Type a state or city name…</div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -105,7 +153,7 @@
       <a href="pages/alerts.html" class="nav-item">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
         <span>Alerts</span>
-        <span class="nav-badge alerts-badge">3</span>
+        <span class="nav-badge alerts-badge" style="display:none">0</span>
       </a>
       <a href="pages/settings.html" class="nav-item">
         <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -135,7 +183,7 @@
         </button>
         <button class="topbar-btn" aria-label="Notifications">
           <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-          <span class="btn-badge alerts-badge">3</span>
+          <span class="btn-badge alerts-badge" style="display:none">0</span>
         </button>
         <div class="avatar-btn" aria-label="Profile">B</div>
       </div>
@@ -158,7 +206,7 @@
         </button>
         <button class="mt-btn" aria-label="Notifications">
           <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-          <span class="btn-badge alerts-badge">3</span>
+          <span class="btn-badge alerts-badge" style="display:none">0</span>
         </button>
       </div>
     </header>
@@ -265,23 +313,6 @@
             </div>
           </section>
 
-          <!-- Today vs Normal -->
-          <section>
-            <div class="section-header">
-              <h2 class="section-title">Today vs Normal</h2>
-              <a href="pages/insights.html" class="view-all-btn">
-                View all
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-              </a>
-            </div>
-            <div class="today-normal-grid" id="today-vs-normal">
-              <div class="tn-item skeleton" style="height:100px"></div>
-              <div class="tn-item skeleton" style="height:100px"></div>
-              <div class="tn-item skeleton" style="height:100px"></div>
-              <div class="tn-item skeleton" style="height:100px"></div>
-            </div>
-          </section>
-
           <!-- Hourly Forecast -->
           <section>
             <div class="section-header">
@@ -289,6 +320,24 @@
               <a href="pages/insights.html" class="view-all-btn">View all <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></a>
             </div>
             <div class="forecast-strip" id="hourly-forecast" role="list" aria-label="Hourly forecast">
+              <!-- Skeleton placeholders, replaced by JS on data load -->
+              <div class="hn-item skeleton" style="min-width:64px;height:100px;flex-shrink:0;border-radius:var(--radius-lg)"></div>
+              <div class="hn-item skeleton" style="min-width:64px;height:100px;flex-shrink:0;border-radius:var(--radius-lg)"></div>
+              <div class="hn-item skeleton" style="min-width:64px;height:100px;flex-shrink:0;border-radius:var(--radius-lg)"></div>
+              <div class="hn-item skeleton" style="min-width:64px;height:100px;flex-shrink:0;border-radius:var(--radius-lg)"></div>
+              <div class="hn-item skeleton" style="min-width:64px;height:100px;flex-shrink:0;border-radius:var(--radius-lg)"></div>
+              <div class="hn-item skeleton" style="min-width:64px;height:100px;flex-shrink:0;border-radius:var(--radius-lg)"></div>
+              <div class="hn-item skeleton" style="min-width:64px;height:100px;flex-shrink:0;border-radius:var(--radius-lg)"></div>
+              <div class="hn-item skeleton" style="min-width:64px;height:100px;flex-shrink:0;border-radius:var(--radius-lg)"></div>
+            </div>
+          </section>
+
+          <!-- Rain Forecast -->
+          <section class="card" id="rain-forecast-card" style="display:none">
+            <div class="section-header">
+              <h2 class="section-title">🌧 Rain Forecast</h2>
+            </div>
+            <div id="rain-forecast-content">
               <!-- Populated by JS -->
             </div>
           </section>
@@ -300,25 +349,38 @@
               <a href="pages/insights.html" class="view-all-btn">View all <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></a>
             </div>
             <div id="daily-forecast" role="list" aria-label="7-day forecast">
-              <!-- Populated by JS -->
+              <div class="skeleton" style="height:48px;margin-bottom:8px;border-radius:var(--radius-md)"></div>
+              <div class="skeleton" style="height:48px;margin-bottom:8px;border-radius:var(--radius-md)"></div>
+              <div class="skeleton" style="height:48px;margin-bottom:8px;border-radius:var(--radius-md)"></div>
+              <div class="skeleton" style="height:48px;margin-bottom:8px;border-radius:var(--radius-md)"></div>
+              <div class="skeleton" style="height:48px;margin-bottom:8px;border-radius:var(--radius-md)"></div>
+              <div class="skeleton" style="height:48px;margin-bottom:8px;border-radius:var(--radius-md)"></div>
+              <div class="skeleton" style="height:48px;border-radius:var(--radius-md)"></div>
             </div>
           </section>
 
-          <!-- Health Advisory (mobile) -->
-          <section class="health-advisory" aria-live="polite">
-            <div style="flex:1">
-              <div class="ha-badge">Moderate</div>
-              <div style="font-weight:600;margin-bottom:4px">Health Advisory</div>
-              <div class="ha-text">Loading health advisory…</div>
+          <!-- Today vs Normal -->
+          <section class="card">
+            <div class="section-header mb-md">
+              <h2 class="section-title">Today vs Normal</h2>
+              <a href="pages/insights.html" class="view-all-btn">View all <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></a>
             </div>
-            <div class="ha-illustration">😷</div>
+            <div class="today-normal-grid" id="today-vs-normal">
+              <div class="tn-item skeleton" style="height:100px"></div>
+              <div class="tn-item skeleton" style="height:100px"></div>
+              <div class="tn-item skeleton" style="height:100px"></div>
+              <div class="tn-item skeleton" style="height:100px"></div>
+            </div>
           </section>
 
           <!-- Outdoor Recs -->
           <section>
             <h2 class="section-title mb-lg">Outdoor Recommendations</h2>
             <div class="recs-grid" id="outdoor-recs">
-              <!-- Populated by JS -->
+              <div class="skeleton" style="height:90px;border-radius:var(--radius-lg)"></div>
+              <div class="skeleton" style="height:90px;border-radius:var(--radius-lg)"></div>
+              <div class="skeleton" style="height:90px;border-radius:var(--radius-lg)"></div>
+              <div class="skeleton" style="height:90px;border-radius:var(--radius-lg)"></div>
             </div>
           </section>
 
@@ -329,20 +391,40 @@
 
           <!-- AQI Panel -->
           <div class="card aqi-panel" id="aqi-panel">
-            <div style="opacity:.5;text-align:center;padding:32px">Loading AQI…</div>
+            <!-- Skeleton until AQI data loads -->
+            <div style="padding:4px 0">
+              <div class="sk-line skeleton" style="width:40%;height:10px;margin-bottom:12px"></div>
+              <div class="sk-line skeleton" style="width:70%;height:32px;margin-bottom:8px;border-radius:8px"></div>
+              <div class="sk-line skeleton" style="width:55%;height:10px;margin-bottom:20px"></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <div class="skeleton" style="height:56px;border-radius:var(--radius-md)"></div>
+                <div class="skeleton" style="height:56px;border-radius:var(--radius-md)"></div>
+                <div class="skeleton" style="height:56px;border-radius:var(--radius-md)"></div>
+                <div class="skeleton" style="height:56px;border-radius:var(--radius-md)"></div>
+              </div>
+            </div>
           </div>
 
           <!-- AeroScore (donut + factor breakdown + advice) -->
           <div class="card aero-card" data-score="aero">
             <div class="aero-card-head"><span class="sc-label">AeroScore™</span></div>
             <div class="aero-card-body">
-              <div class="aero-ring" id="aero-ring"></div>
+              <div class="aero-ring" id="aero-ring">
+                <!-- Skeleton ring placeholder -->
+                <div class="sk-circle skeleton" style="width:96px;height:96px"></div>
+              </div>
               <div class="aero-meta">
                 <div class="sc-status aero-status" id="aero-status">–</div>
                 <div class="aero-advice" id="aero-advice"></div>
               </div>
             </div>
-            <div class="aero-factors" id="aero-factors"></div>
+            <div class="aero-factors" id="aero-factors">
+              <!-- Skeleton factor bars -->
+              <div class="skeleton" style="height:14px;border-radius:6px;margin-bottom:8px"></div>
+              <div class="skeleton" style="height:14px;border-radius:6px;margin-bottom:8px;width:85%"></div>
+              <div class="skeleton" style="height:14px;border-radius:6px;margin-bottom:8px;width:70%"></div>
+              <div class="skeleton" style="height:14px;border-radius:6px;width:90%"></div>
+            </div>
           </div>
 
           <!-- Sunrise / Sunset -->
@@ -375,6 +457,16 @@
               <canvas id="home-aqi-chart" aria-label="AQI trend chart"></canvas>
             </div>
           </div>
+
+          <!-- Health Advisory -->
+          <section class="health-advisory" aria-live="polite">
+            <div style="flex:1">
+              <div class="ha-badge">Moderate</div>
+              <div style="font-weight:600;margin-bottom:4px">Health Advisory</div>
+              <div class="ha-text">Loading health advisory…</div>
+            </div>
+            <div class="ha-illustration">😷</div>
+          </section>
 
           <!-- Saved Places -->
           <div class="card">
@@ -411,7 +503,7 @@
       <a href="pages/alerts.html" class="bottom-nav-item" aria-label="Alerts">
         <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
         <span class="bn-label">Alerts</span>
-        <span class="bn-badge alerts-badge">3</span>
+        <span class="bn-badge alerts-badge" style="display:none">0</span>
       </a>
       <a href="pages/settings.html" class="bottom-nav-item" aria-label="Settings">
         <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>

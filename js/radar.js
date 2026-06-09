@@ -17,30 +17,64 @@ let state = { weather: null, aqi: null, location: null, settings: null };
 const LAYER_CONFIGS = {
   rain: {
     label: 'Rain', icon: '💧',
-    url: 'https://tilecache.rainviewer.com/v2/coverage/0/256/{z}/{x}/{y}/2/1_1.png',
+    // URL is replaced at runtime by fetchLatestRainViewerFrame() before initMap().
+    // The coverage/0 fallback is intentionally omitted to avoid "Zoom not
+    // supported" tiles (timestamp 0 is invalid → RainViewer returns error images).
+    url: null,
     attribution: '© RainViewer', opacity: 0.7, fallback: true,
   },
   clouds: {
     label: 'Clouds', icon: '☁️',
     url: 'https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=demo',
     attribution: '© OpenWeatherMap', opacity: 0.6, fallback: true,
+    maxNativeZoom: 7,
   },
   wind: {
     label: 'Wind', icon: '💨',
     url: 'https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=demo',
     attribution: '© OpenWeatherMap', opacity: 0.65, fallback: true,
+    maxNativeZoom: 7,
   },
   aqi: {
     label: 'AQI', icon: '🌿',
     url: null,
     attribution: '© AeroSense', opacity: 0.5, fallback: true,
+    maxNativeZoom: 7,
   },
   temp: {
     label: 'Temp', icon: '🌡',
     url: 'https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=demo',
     attribution: '© OpenWeatherMap', opacity: 0.6, fallback: true,
+    maxNativeZoom: 7,
   },
 };
+
+/**
+ * Fetch the most recent radar frame from the RainViewer public API and update
+ * LAYER_CONFIGS.rain.url with a real timestamped tile URL.
+ *
+ * The static coverage/0 URL (timestamp 0) is invalid — RainViewer returns tiles
+ * with "Zoom not supported" text baked into the image at every zoom level.
+ * Using an actual past-frame timestamp gives clean precipitation radar tiles
+ * that work from zoom 1 to 18 with no embedded error text.
+ */
+async function fetchLatestRainViewerFrame() {
+  try {
+    const res = await fetch('https://api.rainviewer.com/public/weather-maps.json', {
+      cache: 'no-store',
+    });
+    if (!res.ok) return;
+    const json = await res.json();
+    const frames = json.radar?.past ?? [];
+    if (!frames.length) return;
+    const latest = frames[frames.length - 1];
+    // path looks like: /v2/radar/1234567890
+    LAYER_CONFIGS.rain.url = `https://tilecache.rainviewer.com${latest.path}/256/{z}/{x}/{y}/2/1_1.png`;
+  } catch {
+    // Network unavailable — rain layer simply stays null and is skipped
+    console.warn('[Radar] Could not fetch RainViewer frame; rain layer disabled.');
+  }
+}
 
 // ── Boot: ES modules are deferred — DOMContentLoaded may have already fired
 async function init() {
@@ -52,6 +86,11 @@ async function init() {
   document.documentElement.setAttribute('data-theme', resolvedTheme);
 
   await loadLocationAndData();
+
+  // Resolve a real RainViewer tile URL before the map is built so the
+  // rain layer works immediately without an extra reload.
+  await fetchLatestRainViewerFrame();
+
   initMap();
   setupLayerButtons();
   setupTimeline();
@@ -89,7 +128,7 @@ function initMap() {
 
   map = L.map('map', {
     center: [lat, lon],
-    zoom: 10,
+    zoom: 7,
     zoomControl: false,
     attributionControl: false,
     tap: false,           // prevents "Zoom not supported" on iOS
@@ -150,6 +189,10 @@ function addWeatherLayer(type) {
       opacity: config.opacity,
       attribution: config.attribution,
       errorTileUrl: '',
+      // Cap tile requests to the layer's supported zoom range.
+      // Leaflet scales the capped tiles up, preventing "Zoom not supported"
+      // text that is baked into tiles at higher zoom levels.
+      maxNativeZoom: config.maxNativeZoom ?? 10,
     });
     tl.addTo(map);
     layers.active = tl;
@@ -280,7 +323,7 @@ function updateRadarSidebar() {
       <div style="font-size:var(--text-sm);opacity:.6;margin-bottom:6px">Next precipitation</div>
       <div style="font-size:var(--text-xl);font-weight:700;color:var(--color-brand);margin-bottom:4px">${timeStr}</div>
       ${precipPct > 0 ? `<div style="font-size:var(--text-sm);opacity:.6">${precipPct}% chance of rain</div>` : ''}
-      <div style="margin-top:8px;font-size:2rem">${next === -1 ? '☀️' : precipPct > 60 ? '🌧' : '🌦'}</div>
+      <div style="margin-top:8px">${next === -1 ? '☀️' : precipPct > 60 ? '🌧️' : '🌦️'}</div>
     `;
   }
 }
