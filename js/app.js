@@ -1274,147 +1274,231 @@ function showError(msg) {
   if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); }
 }
 
+// ---- Recent Searches ----
+function getRecentSearches() {
+  try { return JSON.parse(localStorage.getItem('aerosense_recent_searches') || '[]'); } catch { return []; }
+}
+function saveRecentSearch(loc) {
+  try {
+    let list = getRecentSearches();
+    list = list.filter(r => !(Math.abs(r.lat - loc.lat) < 0.05 && Math.abs(r.lon - loc.lon) < 0.05));
+    list.unshift({ name: loc.name, lat: loc.lat, lon: loc.lon });
+    localStorage.setItem('aerosense_recent_searches', JSON.stringify(list.slice(0, 5)));
+  } catch {}
+}
+function clearRecentSearches() {
+  try { localStorage.removeItem('aerosense_recent_searches'); } catch {}
+}
+
+// ---- Popular Cities by Country ----
+const POPULAR_CITIES = {
+  IN: [
+    { name: 'Bangalore', lat: 12.9716, lon: 77.5946 },
+    { name: 'Mumbai', lat: 19.0760, lon: 72.8777 },
+    { name: 'Delhi', lat: 28.6139, lon: 77.2090 },
+    { name: 'Hyderabad', lat: 17.3850, lon: 78.4867 },
+    { name: 'Chennai', lat: 13.0827, lon: 80.2707 },
+    { name: 'Kolkata', lat: 22.5726, lon: 88.3639 },
+  ],
+  US: [
+    { name: 'New York', lat: 40.7128, lon: -74.0060 },
+    { name: 'Los Angeles', lat: 34.0522, lon: -118.2437 },
+    { name: 'Chicago', lat: 41.8781, lon: -87.6298 },
+    { name: 'Houston', lat: 29.7604, lon: -95.3698 },
+    { name: 'Miami', lat: 25.7617, lon: -80.1918 },
+    { name: 'Seattle', lat: 47.6062, lon: -122.3321 },
+  ],
+  GB: [
+    { name: 'London', lat: 51.5074, lon: -0.1278 },
+    { name: 'Manchester', lat: 53.4808, lon: -2.2426 },
+    { name: 'Birmingham', lat: 52.4862, lon: -1.8904 },
+    { name: 'Edinburgh', lat: 55.9533, lon: -3.1883 },
+    { name: 'Bristol', lat: 51.4545, lon: -2.5879 },
+    { name: 'Leeds', lat: 53.8008, lon: -1.5491 },
+  ],
+  AU: [
+    { name: 'Sydney', lat: -33.8688, lon: 151.2093 },
+    { name: 'Melbourne', lat: -37.8136, lon: 144.9631 },
+    { name: 'Brisbane', lat: -27.4698, lon: 153.0251 },
+    { name: 'Perth', lat: -31.9505, lon: 115.8605 },
+    { name: 'Adelaide', lat: -34.9285, lon: 138.6007 },
+    { name: 'Canberra', lat: -35.2809, lon: 149.1300 },
+  ],
+  DE: [
+    { name: 'Berlin', lat: 52.5200, lon: 13.4050 },
+    { name: 'Munich', lat: 48.1351, lon: 11.5820 },
+    { name: 'Hamburg', lat: 53.5511, lon: 9.9937 },
+    { name: 'Frankfurt', lat: 50.1109, lon: 8.6821 },
+    { name: 'Cologne', lat: 50.9333, lon: 6.9500 },
+    { name: 'Stuttgart', lat: 48.7758, lon: 9.1829 },
+  ],
+  JP: [
+    { name: 'Tokyo', lat: 35.6762, lon: 139.6503 },
+    { name: 'Osaka', lat: 34.6937, lon: 135.5023 },
+    { name: 'Kyoto', lat: 35.0116, lon: 135.7681 },
+    { name: 'Nagoya', lat: 35.1815, lon: 136.9066 },
+    { name: 'Sapporo', lat: 43.0618, lon: 141.3545 },
+    { name: 'Fukuoka', lat: 33.5902, lon: 130.4017 },
+  ],
+  SG: [
+    { name: 'Singapore', lat: 1.3521, lon: 103.8198 },
+    { name: 'Jurong', lat: 1.3329, lon: 103.7436 },
+    { name: 'Tampines', lat: 1.3496, lon: 103.9568 },
+    { name: 'Woodlands', lat: 1.4382, lon: 103.7891 },
+    { name: 'Punggol', lat: 1.3984, lon: 103.9072 },
+    { name: 'Changi', lat: 1.3644, lon: 103.9915 },
+  ],
+  CA: [
+    { name: 'Toronto', lat: 43.6532, lon: -79.3832 },
+    { name: 'Vancouver', lat: 49.2827, lon: -123.1207 },
+    { name: 'Montreal', lat: 45.5017, lon: -73.5673 },
+    { name: 'Calgary', lat: 51.0447, lon: -114.0719 },
+    { name: 'Ottawa', lat: 45.4215, lon: -75.6972 },
+    { name: 'Edmonton', lat: 53.5461, lon: -113.4938 },
+  ],
+  _DEFAULT: [
+    { name: 'London', lat: 51.5074, lon: -0.1278 },
+    { name: 'New York', lat: 40.7128, lon: -74.0060 },
+    { name: 'Tokyo', lat: 35.6762, lon: 139.6503 },
+    { name: 'Dubai', lat: 25.2048, lon: 55.2708 },
+    { name: 'Paris', lat: 48.8566, lon: 2.3522 },
+    { name: 'Singapore', lat: 1.3521, lon: 103.8198 },
+  ],
+};
+
+function countryFlag(code) {
+  if (!code || code.length < 2) return '';
+  try {
+    const c = code.toUpperCase();
+    const offset = 0x1F1E6 - 65;
+    return String.fromCodePoint(c.charCodeAt(0) + offset) + String.fromCodePoint(c.charCodeAt(1) + offset);
+  } catch { return ''; }
+}
+
 // ---- City Search ----
 function showCitySearch() {
   const modal = el('city-search-modal');
   if (modal) modal.classList.add('show');
   hideLoading();
+  // Reset to default state
+  const defEl = el('cs-default');
+  const resEl = el('cs-results-wrap');
+  if (defEl) defEl.style.display = '';
+  if (resEl) resEl.style.display = 'none';
+  renderSearchDefault();
+  // Clear + focus input
+  setTimeout(() => {
+    const inp = el('city-search-input');
+    if (inp) { inp.value = ''; inp.focus(); }
+    const clearBtn = el('cs-clear-btn');
+    if (clearBtn) clearBtn.style.display = 'none';
+  }, 50);
 }
+
 function hideCitySearch() {
   const modal = el('city-search-modal');
   if (modal) modal.classList.remove('show');
 }
 
+function renderSearchDefault() {
+  // Recent searches
+  const recents = getRecentSearches();
+  const recSection = el('cs-recents-section');
+  const recList    = el('cs-recent-list');
+  if (recSection && recList) {
+    if (recents.length) {
+      recSection.style.display = '';
+      recList.innerHTML = recents.map(r => `
+        <div class="cs-recent-item" onclick="selectCity(${r.lat},${r.lon},${JSON.stringify(r.name)})">
+          <div class="cs-recent-icon">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <span class="cs-recent-name">${r.name}</span>
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="opacity:.3;flex-shrink:0;margin-left:auto"><path d="M9 18l6-6-6-6"/></svg>
+        </div>
+      `).join('');
+    } else {
+      recSection.style.display = 'none';
+    }
+  }
+
+  // Popular cities for detected country
+  const userCountry = Storage.getUserCountry();
+  const code = userCountry?.code || 'IN';
+  const name = userCountry?.name || 'India';
+  const cities = POPULAR_CITIES[code] || POPULAR_CITIES._DEFAULT;
+  const flag = countryFlag(code);
+
+  const labelEl = el('cs-country-label');
+  if (labelEl) labelEl.textContent = (flag ? flag + ' ' : '') + name;
+
+  const chipsEl = el('cs-popular-chips');
+  if (chipsEl) {
+    chipsEl.innerHTML = cities.map(c => `
+      <button class="cs-chip" onclick="selectCity(${c.lat},${c.lon},${JSON.stringify(c.name)})">${c.name}</button>
+    `).join('');
+  }
+}
+
 async function handleCitySearch(query) {
-  if (query.length < 2) return;
+  const defEl   = el('cs-default');
+  const resEl   = el('cs-results-wrap');
+  const listEl  = el('city-results');
+  const clearBtn = el('cs-clear-btn');
+
+  if (!query.trim()) {
+    if (defEl)    defEl.style.display = '';
+    if (resEl)    resEl.style.display = 'none';
+    if (clearBtn) clearBtn.style.display = 'none';
+    return;
+  }
+
+  if (clearBtn) clearBtn.style.display = '';
+  if (defEl)    defEl.style.display = 'none';
+  if (resEl)    resEl.style.display = '';
+
+  if (query.length < 2) {
+    if (listEl) listEl.innerHTML = '<div class="cs-hint">Keep typing…</div>';
+    return;
+  }
+
+  if (listEl) listEl.innerHTML = '<div class="cs-searching"><div class="cs-spinner"></div><span>Searching…</span></div>';
+
   const results = await geocode(query);
-  const listEl = el('city-results');
   if (!listEl) return;
+
   if (!results.length) {
-    listEl.innerHTML = '<div style="padding:16px;opacity:.6;text-align:center">No results found</div>';
+    listEl.innerHTML = `<div class="cs-empty">No results for "<strong>${query}</strong>"</div>`;
     return;
   }
-  listEl.innerHTML = results.map(r => `
-    <div class="city-result-item" onclick="selectCity(${r.latitude},${r.longitude},'${r.name}, ${r.country_code}')">
-      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-      <div>
-        <div class="cr-name">${r.name}</div>
-        <div class="cr-country">${r.admin1 || ''}, ${r.country}</div>
+
+  listEl.innerHTML = results.map(r => {
+    const flag = countryFlag(r.country_code);
+    const subtitle = [r.admin1, r.country].filter(Boolean).join(', ');
+    const locName = r.name + (r.country_code ? ', ' + r.country_code : '');
+    return `
+      <div class="city-result-item" onclick="selectCity(${r.latitude},${r.longitude},${JSON.stringify(locName)})">
+        <div class="cr-flag">${flag}</div>
+        <div class="cr-body">
+          <div class="cr-name">${r.name}</div>
+          <div class="cr-country">${subtitle}</div>
+        </div>
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="opacity:.25;flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
-// ---- "Browse by Country" search mode (additive — doesn't touch the
-// free-text #cs-mode-search flow above) ----
-let csSelectedCountry = null; // { code, name }
-
-function renderCountryList(query) {
-  const listEl = el('country-results');
-  if (!listEl) return;
-  const q = (query || '').trim().toLowerCase();
-  let list;
-  if (!q) {
-    // No query yet: pin the detected country (if any) at the top so the
-    // user can jump straight into it, then show the rest alphabetically.
-    const detected = Storage.getUserCountry();
-    const detectedEntry = detected ? findCountry(detected.code) : null;
-    list = detectedEntry
-      ? [detectedEntry, ...COUNTRIES.filter(c => c.code !== detectedEntry.code)]
-      : COUNTRIES;
-  } else {
-    list = COUNTRIES.filter(c => c.name.toLowerCase().includes(q));
-  }
-  if (!list.length) {
-    listEl.innerHTML = '<div style="padding:16px;opacity:.6;text-align:center">No countries found</div>';
-    return;
-  }
-  const detected = Storage.getUserCountry();
-  listEl.innerHTML = list.slice(0, 60).map(c => `
-    <div class="city-result-item" onclick="selectCountry('${c.code}', '${c.name.replace(/'/g, "\\'")}')">
-      <span class="cr-flag-badge">${c.code}</span>
-      <div>
-        <div class="cr-name">${c.name}${detected && detected.code === c.code ? ' <span style="opacity:.55;font-weight:500;font-size:12px">(detected)</span>' : ''}</div>
-      </div>
-    </div>
-  `).join('');
-}
-
-window.selectCountry = (code, name) => {
-  csSelectedCountry = { code, name };
-  const stepCountry = el('cs-country-step');
-  const stepCity = el('cs-city-step');
-  const label = el('cs-selected-country-label');
-  if (stepCountry) stepCountry.style.display = 'none';
-  if (stepCity) stepCity.style.display = '';
-  if (label) label.textContent = `${name} (${code})`;
-  const cityInput = el('country-city-input');
-  const cityResults = el('country-city-results');
-  if (cityResults) cityResults.innerHTML = '<div style="padding:16px;text-align:center;opacity:.5;font-size:14px">Type a state or city name…</div>';
-  if (cityInput) { cityInput.value = ''; cityInput.focus(); }
-};
-
-function backToCountryStep() {
-  csSelectedCountry = null;
-  const stepCountry = el('cs-country-step');
-  const stepCity = el('cs-city-step');
-  if (stepCity) stepCity.style.display = 'none';
-  if (stepCountry) stepCountry.style.display = '';
-  const cityInput = el('country-city-input');
-  if (cityInput) cityInput.value = '';
-}
-
-async function handleCountryCitySearch(query) {
-  if (!csSelectedCountry || query.length < 2) return;
-  const results = await geocode(query);
-  const listEl = el('country-city-results');
-  if (!listEl) return;
-  const filtered = results.filter(r => (r.country_code || '').toUpperCase() === csSelectedCountry.code);
-  if (!filtered.length) {
-    listEl.innerHTML = `<div style="padding:16px;opacity:.6;text-align:center">No places found in ${csSelectedCountry.name}</div>`;
-    return;
-  }
-  // Reuses the existing window.selectCity handler — same markup pattern as
-  // the free-text search results, so nothing about city selection changes.
-  listEl.innerHTML = filtered.map(r => `
-    <div class="city-result-item" onclick="selectCity(${r.latitude},${r.longitude},'${r.name}, ${r.country_code}')">
-      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-      <div>
-        <div class="cr-name">${r.name}</div>
-        <div class="cr-country">${r.admin1 || ''}, ${r.country}</div>
-      </div>
-    </div>
-  `).join('');
-}
-
-function setCitySearchMode(mode) {
-  qsa('.cs-tab').forEach(tab => {
-    const active = tab.dataset.mode === mode;
-    tab.classList.toggle('active', active);
-    tab.setAttribute('aria-selected', active ? 'true' : 'false');
-  });
-  const modeSearch = el('cs-mode-search');
-  const modeCountry = el('cs-mode-country');
-  if (modeSearch) modeSearch.style.display = mode === 'search' ? '' : 'none';
-  if (modeCountry) modeCountry.style.display = mode === 'country' ? '' : 'none';
-  if (mode === 'country') {
-    // Reset to the country-picker step each time the tab is opened, and
-    // pre-render the list (pinning the detected country) right away.
-    backToCountryStep();
-    const input = el('country-search-input');
-    if (input) input.value = '';
-    renderCountryList('');
-  }
-}
 
 window.selectCity = async (lat, lon, name) => {
   hideCitySearch();
   const loc = { lat, lon, name };
+  saveRecentSearch(loc);
   state.location = loc;
   state.locationName = name;
   Storage.cacheLocation(loc);
   showLoading('Fetching weather...');
-  await loadData(true);  // forceRefresh=true: skip cache, fetch for the new city
+  await loadData(true);
   hideLoading();
 };
 
@@ -1456,43 +1540,55 @@ function setupEventListeners() {
     toggleFullscreen();
   });
 
-  // City search modal
+  // City search modal — input
   const citySearchInput = el('city-search-input');
   if (citySearchInput) {
-    citySearchInput.addEventListener('input', debounce(e => handleCitySearch(e.target.value), 300));
+    citySearchInput.addEventListener('input', debounce(e => handleCitySearch(e.target.value), 280));
   }
+
+  // Backdrop + close button
   const cityBackdrop = el('city-search-backdrop');
   if (cityBackdrop) cityBackdrop.addEventListener('click', hideCitySearch);
+  const csCloseBtn = el('cs-close-btn');
+  if (csCloseBtn) csCloseBtn.addEventListener('click', hideCitySearch);
 
-  // Search-mode tabs (Search vs. By Country) — additive UI on top of the
-  // existing modal; switching tabs never touches the free-text search state.
-  qsa('.cs-tab').forEach(tab => {
-    tab.addEventListener('click', () => setCitySearchMode(tab.dataset.mode));
-  });
-
-  // "By Country" — country picker
-  const countrySearchInput = el('country-search-input');
-  if (countrySearchInput) {
-    countrySearchInput.addEventListener('input', debounce(e => renderCountryList(e.target.value), 200));
+  // Clear input button (X inside input)
+  const csClearBtn = el('cs-clear-btn');
+  if (csClearBtn) {
+    csClearBtn.addEventListener('click', () => {
+      const inp = el('city-search-input');
+      if (inp) { inp.value = ''; inp.focus(); }
+      handleCitySearch('');
+    });
   }
 
-  // "By Country" — back to country list
-  const countryBackBtn = el('cs-country-back');
-  if (countryBackBtn) countryBackBtn.addEventListener('click', backToCountryStep);
-
-  // "By Country" — state/city search scoped to the chosen country
-  const countryCityInput = el('country-city-input');
-  if (countryCityInput) {
-    countryCityInput.addEventListener('input', debounce(e => handleCountryCitySearch(e.target.value), 300));
+  // "Use My Current Location" button
+  const csUseLocation = el('cs-use-location');
+  if (csUseLocation) {
+    csUseLocation.addEventListener('click', async () => {
+      hideCitySearch();
+      Storage.remove('location');
+      showLoading('Getting your location…');
+      await loadData(true);
+      hideLoading();
+    });
   }
 
-  // Open city search from topbar
+  // Clear recent searches
+  const csClearRecents = el('cs-clear-recents');
+  if (csClearRecents) {
+    csClearRecents.addEventListener('click', () => {
+      clearRecentSearches();
+      const sec = el('cs-recents-section');
+      if (sec) sec.style.display = 'none';
+    });
+  }
+
+  // Open city search from topbar search bar
   const searchInput = el('topbar-search');
   if (searchInput) {
     searchInput.addEventListener('focus', () => {
       showCitySearch();
-      const cityInput = el('city-search-input');
-      if (cityInput) { cityInput.value = ''; cityInput.focus(); }
     });
   }
 

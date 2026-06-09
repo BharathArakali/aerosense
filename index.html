@@ -72,59 +72,62 @@
 </div>
 
 <!-- ========== CITY SEARCH MODAL ========== -->
-<div class="city-search-modal" id="city-search-modal" role="dialog" aria-label="City search">
+<div class="city-search-modal" id="city-search-modal" role="dialog" aria-modal="true" aria-label="Search Location">
   <div class="city-search-backdrop" id="city-search-backdrop"></div>
   <div class="city-search-box">
 
-    <!-- Mode tabs: free-text search vs. browse by country -->
-    <div class="cs-tabs" id="cs-tabs" role="tablist">
-      <button class="cs-tab active" data-mode="search" type="button" role="tab" aria-selected="true">Search</button>
-      <button class="cs-tab" data-mode="country" type="button" role="tab" aria-selected="false">By Country</button>
+    <!-- Input row -->
+    <div class="cs-input-row">
+      <svg class="cs-input-icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="city-search-input" class="cs-input" placeholder="Search city, state or country…" autocomplete="off"/>
+      <button class="cs-clear-btn" id="cs-clear-btn" aria-label="Clear" style="display:none">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <button class="cs-close-btn" id="cs-close-btn" aria-label="Close search">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
 
-    <!-- ── Mode 1: free-text city/place search (unchanged behaviour) ── -->
-    <div id="cs-mode-search">
-      <div class="city-search-input-wrap">
-        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="city-search-input" placeholder="Search city or place..." autocomplete="off" autofocus/>
+    <!-- Default state: recents + popular cities -->
+    <div class="cs-default" id="cs-default">
+
+      <!-- Use my location -->
+      <button class="cs-location-btn" id="cs-use-location">
+        <div class="cs-loc-icon">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+        </div>
+        <div class="cs-loc-text">
+          <div class="cs-loc-title">Use My Current Location</div>
+          <div class="cs-loc-sub">Auto-detect with GPS</div>
+        </div>
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="opacity:.4;flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+
+      <!-- Recent searches (hidden when empty) -->
+      <div class="cs-section" id="cs-recents-section" style="display:none">
+        <div class="cs-section-head">
+          <span>Recent</span>
+          <button class="cs-section-action" id="cs-clear-recents">Clear all</button>
+        </div>
+        <div id="cs-recent-list"></div>
       </div>
-      <div class="city-results" id="city-results">
-        <div style="padding:16px;text-align:center;opacity:.5;font-size:14px">Type to search for a city…</div>
+
+      <!-- Popular in detected country -->
+      <div class="cs-section" id="cs-popular-section">
+        <div class="cs-section-head">
+          <span>Popular in <span id="cs-country-label">India</span></span>
+        </div>
+        <div class="cs-chips" id="cs-popular-chips"></div>
       </div>
+
+    </div><!-- /cs-default -->
+
+    <!-- Live search results -->
+    <div class="cs-results-wrap" id="cs-results-wrap" style="display:none">
+      <div id="city-results"></div>
     </div>
 
-    <!-- ── Mode 2: browse by country, then state/city within it ── -->
-    <div id="cs-mode-country" style="display:none">
-
-      <!-- Step 1 — pick a country -->
-      <div id="cs-country-step">
-        <div class="city-search-input-wrap">
-          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="country-search-input" placeholder="Search for a country..." autocomplete="off"/>
-        </div>
-        <div class="city-results" id="country-results">
-          <div style="padding:16px;text-align:center;opacity:.5;font-size:14px">Type to find a country, or pick your detected one below…</div>
-        </div>
-      </div>
-
-      <!-- Step 2 — search states/cities within the chosen country -->
-      <div id="cs-city-step" style="display:none">
-        <div class="cs-selected-country" id="cs-selected-country">
-          <button class="cs-country-back" id="cs-country-back" type="button" aria-label="Change country">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-          </button>
-          <span id="cs-selected-country-label"></span>
-        </div>
-        <div class="city-search-input-wrap">
-          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="country-city-input" placeholder="Search states or cities..." autocomplete="off"/>
-        </div>
-        <div class="city-results" id="country-city-results">
-          <div style="padding:16px;text-align:center;opacity:.5;font-size:14px">Type a state or city name…</div>
-        </div>
-      </div>
-    </div>
-  </div>
+  </div><!-- /city-search-box -->
 </div>
 
 <!-- ========== APP SHELL ========== -->
