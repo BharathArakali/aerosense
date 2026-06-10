@@ -63,23 +63,23 @@
       border-radius: var(--radius-full);
       font-size: var(--text-sm); font-weight: 600;
       cursor: pointer;
-      border: 1.5px solid var(--border-color);
-      background: var(--card-bg);
+      border: 1.5px solid var(--border-primary);
+      background: var(--bg-card);
       color: var(--text-secondary);
       transition: background 0.18s, color 0.18s, border-color 0.18s, box-shadow 0.18s;
       position: relative;
     }
     .layer-btn svg { flex-shrink: 0; }
     .layer-btn:hover {
-      background: var(--hover-bg);
-      border-color: var(--primary-color);
+      background: var(--bg-card-hover);
+      border-color: var(--color-brand);
       color: var(--text-primary);
     }
     .layer-btn.active {
-      background: var(--primary-color) !important;
-      border-color: var(--primary-color) !important;
+      background: var(--color-brand) !important;
+      border-color: var(--color-brand) !important;
       color: #fff !important;
-      box-shadow: 0 2px 10px rgba(var(--primary-rgb),.35);
+      box-shadow: 0 2px 10px rgba(59,130,246,.4);
     }
     .layer-btn.layer-loading::after {
       content: '';
@@ -595,11 +595,12 @@
     extraMarkers = [];
   }
 
-  function addMarker(latlng, html, anchor) {
+  function addMarker(latlng, html, anchor, size) {
     var icon = L.divIcon({
       className:  '',
       html:       html,
       iconAnchor: anchor || [0, 0],
+      iconSize:   size   || null,
     });
     var m = L.marker(latlng, { icon: icon, interactive: false }).addTo(map);
     extraMarkers.push(m);
@@ -626,21 +627,24 @@
 
   // ── Rain layer (RainViewer tiles) ─────────────────────────────────
   function showRainLayer() {
+    // CRITICAL: always remove old tile before adding new one.
+    // showRainLayer is called twice: once immediately with null frame
+    // (coverage placeholder) and again when loadRainFrames() resolves.
+    // Without this removal the first tile is orphaned on the map and
+    // stays visible behind other layers as "Zoom Level Not Supported".
+    if (activeTileLayer) { map.removeLayer(activeTileLayer); activeTileLayer = null; }
+
     var frame = rainFrames[timelinePos];
-    var url;
 
-    if (!frame) {
-      // Frames not yet loaded — use static coverage placeholder
-      url = 'https://tilecache.rainviewer.com/v2/coverage/0/256/{z}/{x}/{y}/2/1_1.png';
-    } else if (frame.fallback) {
-      url = 'https://tilecache.rainviewer.com/v2/coverage/0/256/{z}/{x}/{y}/2/1_1.png';
-    } else {
-      // Real radar frame: colour scheme 4, smooth+snow options 1_1
-      url = 'https://' + rvHost + frame.path + '/256/{z}/{x}/{y}/4/1_1.png';
-    }
+    // If frames haven’t loaded yet or RainViewer is unreachable, skip
+    // the placeholder tile entirely (it shows "Zoom Level Not Supported"
+    // at city-level zoom). Real tiles arrive shortly via loadRainFrames().
+    if (!frame || frame.fallback) { return; }
 
+    // Real radar frame: colour scheme 4, smooth+snow options 1_1
+    var url = 'https://' + rvHost + frame.path + '/256/{z}/{x}/{y}/4/1_1.png';
     activeTileLayer = L.tileLayer(url, { opacity: 0.65, errorTileUrl: '' });
-    activeTileLayer.on('tileerror', function () {}); // suppress console noise
+    activeTileLayer.on('tileerror', function () {});
     activeTileLayer.addTo(map);
   }
 
@@ -669,7 +673,7 @@
              : cover < 85 ? 'Mostly cloudy'
              :               'Overcast';
 
-    addMarker([lat, lon], infoBadge(cover.toFixed(0) + '%', desc, '#64748b'), [40, 22]);
+    addMarker([lat, lon], infoBadge(cover.toFixed(0) + '%', desc, '#64748b'), [55, 29], [0, 0]);
   }
 
   // ── Wind layer (L.Circle + directional arrow badge) ───────────────
@@ -702,20 +706,34 @@
                  : speed < 50 ? 'Strong'
                  :               'Severe';
 
-    var html =
-      '<div style="text-align:center">' +
-        '<div style="background:rgba(0,0,0,.75);padding:10px 14px;border-radius:12px;' +
-             'box-shadow:0 2px 10px rgba(0,0,0,.55)">' +
-          '<svg width="44" height="44" viewBox="0 0 44 44" ' +
-               'style="display:block;margin:0 auto 5px;transform:rotate(' + arrowDeg + 'deg)">' +
-            '<polygon points="22,4 28,36 22,29 16,36" fill="' + color + '"/>' +
+    var windHtml =
+      '<div style="' +
+        'display:inline-block;' +
+        'background:rgba(10,16,28,0.90);' +
+        'border:1.5px solid rgba(255,255,255,0.14);' +
+        'border-top:2px solid ' + color + ';' +
+        'border-radius:12px;' +
+        'padding:9px 16px 8px;' +
+        'box-shadow:0 4px 18px rgba(0,0,0,0.6);' +
+        'text-align:center;' +
+        'white-space:nowrap;' +
+        'pointer-events:none;' +
+      '">' +
+        '<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px">' +
+          '<svg width="22" height="22" viewBox="0 0 22 22" style="flex-shrink:0;transform:rotate(' + arrowDeg + 'deg)">' +
+            '<polygon points="11,1 15,19 11,14 7,19" fill="' + color + '"/>' +
           '</svg>' +
-          '<div style="color:#fff;font-weight:800;font-size:14px;line-height:1.2">' + speed.toFixed(0) + ' km/h</div>' +
-          '<div style="color:rgba(255,255,255,.6);font-size:11px;margin-top:2px">' + compass + ' · ' + strength + '</div>' +
+          '<span style="color:#fff;font-weight:800;font-size:18px;line-height:1;letter-spacing:-0.3px">' +
+            speed.toFixed(0) + ' km/h' +
+          '</span>' +
+        '</div>' +
+        '<div style="color:rgba(255,255,255,0.60);font-size:11px;font-weight:500">' +
+          compass + ' &middot; ' + strength +
         '</div>' +
       '</div>';
 
-    addMarker([lat, lon], html, [56, 80]);
+    // iconSize [0,0] + iconAnchor centres the badge over the location dot
+    addMarker([lat, lon], windHtml, [75, 45], [0, 0]);
   }
 
   // ── AQI layer (L.Circle + AQI badge) ─────────────────────────────
@@ -744,7 +762,7 @@
               : aqi <= 200 ? 'Unhealthy'
               :               'Hazardous';
 
-    addMarker([lat, lon], infoBadge('AQI ' + Math.round(aqi), label, color), [46, 22]);
+    addMarker([lat, lon], infoBadge('AQI ' + Math.round(aqi), label, color), [55, 29], [0, 0]);
   }
 
   // ── Temperature layer (L.Circle + temp badge) ─────────────────────
@@ -772,16 +790,34 @@
              : temp < 33 ? 'Warm'
              :               'Hot';
 
-    addMarker([lat, lon], infoBadge(temp.toFixed(1) + '°C', feel, color), [46, 22]);
+    addMarker([lat, lon], infoBadge(temp.toFixed(1) + '°C', feel, color), [55, 29], [0, 0]);
   }
 
-  // ── Badge HTML helper ─────────────────────────────────────────────
+  // ── Badge HTML helper — compact pill readable on any map background ────
   function infoBadge(mainText, subText, color) {
-    return '<div style="background:rgba(0,0,0,.75);padding:8px 14px;border-radius:12px;' +
-           'box-shadow:0 2px 10px rgba(0,0,0,.5);text-align:center;white-space:nowrap">' +
-             '<div style="color:' + color + ';font-weight:800;font-size:15px;line-height:1.2">' + mainText + '</div>' +
-             '<div style="color:rgba(255,255,255,.65);font-size:11px;margin-top:2px">' + subText + '</div>' +
-           '</div>';
+    return '<div style="' +
+      'display:inline-block;' +
+      'background:rgba(10,16,28,0.90);' +
+      'border:1.5px solid rgba(255,255,255,0.14);' +
+      'border-top:2px solid ' + color + ';' +
+      'border-radius:12px;' +
+      'padding:8px 16px;' +
+      'min-width:80px;' +
+      'box-shadow:0 4px 18px rgba(0,0,0,0.6);' +
+      'text-align:center;' +
+      'white-space:nowrap;' +
+      'pointer-events:none;' +
+    '">' +
+      '<div style="' +
+        'color:' + color + ';' +
+        'font-weight:800;font-size:18px;line-height:1.1;' +
+        'letter-spacing:-0.3px;' +
+      '">' + mainText + '</div>' +
+      '<div style="' +
+        'color:rgba(255,255,255,0.60);' +
+        'font-size:11px;margin-top:3px;font-weight:500;' +
+      '">' + subText + '</div>' +
+    '</div>';
   }
 
   // ── AQI colour scale ─────────────────────────────────────────────

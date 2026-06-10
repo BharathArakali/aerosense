@@ -4,7 +4,7 @@
    Deployed at: https://bharatharakali.github.io/aerosense/
    ============================================================ */
 
-const CACHE_NAME    = 'aerosense-v3.5.0';
+const CACHE_NAME    = 'aerosense-v3.5.1';
 const DYNAMIC_CACHE = 'aerosense-dynamic-v2';
 
 // Base path on GitHub Pages (empty string = served from root / local dev)
@@ -60,7 +60,6 @@ const TILE_DOMAINS = [
   'tile.openstreetmap.org',
   'basemaps.cartocdn.com',
   'tilecache.rainviewer.com',
-  'tile.openweathermap.org',
   'cdnjs.cloudflare.com',
   'fonts.googleapis.com',
   'fonts.gstatic.com',
