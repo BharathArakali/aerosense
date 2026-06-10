@@ -331,3 +331,14 @@
   border: 1px solid rgba(255,255,255,0.6);
 }
 [data-theme="light"] .map-ctrl-btn:hover { background: #2563EB; color: #fff; }
+
+/* ── Compare Page (light) ── */
+.cmp-score-card         { background: rgba(255,255,255,0.80); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(0,0,0,.06); }
+.cmp-score-card.winner  { border-color: rgba(59,130,246,.60); box-shadow: 0 0 0 4px rgba(59,130,246,.10); }
+.cmp-decision-card      { background: rgba(34,197,94,.06); border: 1px solid rgba(34,197,94,.25); }
+.cw-item                { background: rgba(255,255,255,.90); border-color: rgba(0,0,0,.06); }
+.ccs-results            { background: rgba(255,255,255,.98); border-color: rgba(0,0,0,.08); }
+.ccs-result-item:hover  { background: rgba(59,130,246,.06); }
+.ccs-input-wrap         { background: rgba(255,255,255,.80); border-color: rgba(0,0,0,.10); }
+.recent-cmp-item        { background: rgba(255,255,255,.80); border-color: rgba(0,0,0,.08); }
+.recent-cmp-item:hover  { border-color: rgba(59,130,246,.50); }

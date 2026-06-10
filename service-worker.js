@@ -4,7 +4,7 @@
    Deployed at: https://bharatharakali.github.io/aerosense/
    ============================================================ */
 
-const CACHE_NAME    = 'aerosense-v2.9.0';
+const CACHE_NAME    = 'aerosense-v3.0.0';
 const DYNAMIC_CACHE = 'aerosense-dynamic-v2';
 
 // Base path on GitHub Pages (empty string = served from root / local dev)
@@ -17,6 +17,7 @@ const APP_SHELL = [
   BASE + '/pages/radar.html',
   BASE + '/pages/insights.html',
   BASE + '/pages/alerts.html',
+  BASE + '/pages/compare.html',
   BASE + '/pages/settings.html',
   BASE + '/css/main.css',
   BASE + '/css/dark.css',
@@ -28,6 +29,7 @@ const APP_SHELL = [
   BASE + '/js/radar.js',
   BASE + '/js/insights.js',
   BASE + '/js/alerts.js',
+  BASE + '/js/compare.js',
   BASE + '/js/settings.js',
   BASE + '/js/storage.js',
   BASE + '/js/notify.js',
