@@ -188,10 +188,11 @@ function addWeatherLayer(type) {
     const tl = L.tileLayer(config.url, {
       opacity: config.opacity,
       attribution: config.attribution,
-      errorTileUrl: '',
+      // Transparent 1×1 PNG replaces error-text tiles (e.g. "Zoom not supported"
+      // images baked into OpenWeatherMap demo-key tiles at high zoom levels).
+      errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
       // Cap tile requests to the layer's supported zoom range.
-      // Leaflet scales the capped tiles up, preventing "Zoom not supported"
-      // text that is baked into tiles at higher zoom levels.
+      // Leaflet scales the capped tiles up, preventing out-of-range requests.
       maxNativeZoom: config.maxNativeZoom ?? 10,
     });
     tl.addTo(map);

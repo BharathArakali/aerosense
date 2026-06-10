@@ -1472,10 +1472,14 @@ async function handleCitySearch(query) {
     return;
   }
 
-  listEl.innerHTML = results.map(r => {
-    const flag = countryFlag(r.country_code);
+  const userCC = (Storage.getUserCountry()?.code || '').toUpperCase();
+  const same  = userCC ? results.filter(r => (r.country_code||'').toUpperCase() === userCC) : results;
+  const other = userCC ? results.filter(r => (r.country_code||'').toUpperCase() !== userCC) : [];
+
+  function renderItem(r) {
+    const flag    = countryFlag(r.country_code);
     const subtitle = [r.admin1, r.country].filter(Boolean).join(', ');
-    const locName = r.name + (r.country_code ? ', ' + r.country_code : '');
+    const locName  = r.name + (r.country_code ? ', ' + r.country_code : '');
     return `
       <div class="city-result-item" onclick="selectCity(${r.latitude},${r.longitude},${JSON.stringify(locName)})">
         <div class="cr-flag">${flag}</div>
@@ -1484,9 +1488,48 @@ async function handleCitySearch(query) {
           <div class="cr-country">${subtitle}</div>
         </div>
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="opacity:.25;flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>
-      </div>
-    `;
-  }).join('');
+      </div>`;
+  }
+
+  const displayList = same.length ? same : results;
+  let html = displayList.map(renderItem).join('');
+
+  // "Show N more from other countries" expander
+  if (same.length && other.length) {
+    html += `
+      <div class="cs-expand-countries">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+        Show ${other.length} more from other countries
+      </div>`;
+  }
+
+  listEl.innerHTML = html;
+
+  // Bind expand button via closure (avoids inline JSON/quote escaping issues)
+  if (same.length && other.length) {
+    const expandBtn = listEl.querySelector('.cs-expand-countries');
+    if (expandBtn) {
+      expandBtn.addEventListener('click', () => {
+        expandBtn.remove();
+        for (const r of other) {
+          const flag     = countryFlag(r.country_code);
+          const subtitle = [r.admin1, r.country].filter(Boolean).join(', ');
+          const locName  = r.name + (r.country_code ? ', ' + r.country_code : '');
+          const div = document.createElement('div');
+          div.className = 'city-result-item';
+          div.onclick = () => window.selectCity(r.latitude, r.longitude, locName);
+          div.innerHTML = `
+            <div class="cr-flag">${flag}</div>
+            <div class="cr-body">
+              <div class="cr-name">${r.name}</div>
+              <div class="cr-country">${subtitle}</div>
+            </div>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="opacity:.25;flex-shrink:0"><path d="M9 18l6-6-6-6"/></svg>`;
+          listEl.appendChild(div);
+        }
+      });
+    }
+  }
 }
 
 

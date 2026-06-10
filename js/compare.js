@@ -186,7 +186,13 @@ function setupSearch(slot) {
       res.innerHTML = '<div class="ccs-empty">No results found</div>';
       return;
     }
-    res.innerHTML = results.map((r, i) => {
+
+    const userCC = (Storage.getUserCountry?.()?.code || '').toUpperCase();
+    const same  = userCC ? results.filter(r => (r.country_code||'').toUpperCase() === userCC) : results;
+    const other = userCC ? results.filter(r => (r.country_code||'').toUpperCase() !== userCC) : [];
+    const display = same.length ? same : results;
+
+    function ccsItem(r, i) {
       const flag = countryFlagEmoji(r.country_code);
       const parts = [r.admin1, r.country].filter(Boolean);
       const sub = parts.join(' · ');
@@ -199,7 +205,35 @@ function setupSearch(slot) {
           <div class="ccri-sub">${sub}${pop ? ' <span class="ccri-pop">'+pop+'</span>' : ''}</div>
         </div>
       </div>`;
-    }).join('');
+    }
+
+    let html = display.map((r,i) => ccsItem(r,i)).join('');
+    if (same.length && other.length) {
+      html += `<div class="ccs-expand-btn" data-side="${side}">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+        Show ${other.length} more from other countries
+      </div>`;
+    }
+    res.innerHTML = html;
+
+    // expand handler
+    const expandBtn = res.querySelector('.ccs-expand-btn');
+    if (expandBtn) {
+      expandBtn.addEventListener('click', () => {
+        expandBtn.remove();
+        const startIdx = display.length;
+        other.forEach((r,j) => {
+          res.insertAdjacentHTML('beforeend', ccsItem(r, startIdx+j));
+        });
+        res.querySelectorAll('.ccs-result-item:not([data-bound])').forEach(item => {
+          item.dataset.bound = '1';
+          item.addEventListener('click', () => {
+            const city = { lat: parseFloat(item.dataset.lat), lon: parseFloat(item.dataset.lon), name: item.dataset.name };
+            selectCity(side, city);
+          });
+        });
+      });
+    }
     res.querySelectorAll('.ccs-result-item').forEach(item => {
       item.addEventListener('click', () => {
         const city = { lat: parseFloat(item.dataset.lat), lon: parseFloat(item.dataset.lon), name: item.dataset.name };

@@ -259,11 +259,34 @@ export function debounce(fn, ms) {
 }
 
 // ---- Geocoding (Open-Meteo Geocoding API) ----
+// City aliases: old/informal names → official names used in the geocoding DB
+const GEOCODE_ALIASES = {
+  bangalore:'bengaluru', bombay:'mumbai', calcutta:'kolkata', madras:'chennai',
+  poona:'pune', baroda:'vadodara', trivandrum:'thiruvananthapuram',
+  calicut:'kozhikode', cochin:'kochi', mysore:'mysuru', mangalore:'mangaluru',
+  hubli:'hubballi', ooty:'udhagamandalam', simla:'shimla',
+  peking:'beijing', rangoon:'yangon', saigon:'ho chi minh city', canton:'guangzhou',
+};
+
 export async function geocode(query) {
-  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`;
-  const res = await fetch(url);
-  const data = await res.json();
-  return data.results || [];
+  const raw = query.trim().toLowerCase();
+  const alias = GEOCODE_ALIASES[raw];
+  const terms = alias ? [query, alias] : [query];
+  const seen = new Set();
+  const all = [];
+  await Promise.all(terms.map(async t => {
+    try {
+      const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(t)}&count=10&language=en&format=json`;
+      const res = await fetch(url);
+      const data = await res.json();
+      for (const r of (data.results || [])) {
+        const key = `${Math.round(r.latitude*4)},${Math.round(r.longitude*4)}`;
+        if (!seen.has(key)) { seen.add(key); all.push(r); }
+      }
+    } catch {}
+  }));
+  all.sort((a,b) => (b.population||0) - (a.population||0));
+  return all.slice(0, 10);
 }
 
 export async function reverseGeocode(lat, lon) {
