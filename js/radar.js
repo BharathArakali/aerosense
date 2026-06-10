@@ -14,40 +14,25 @@ let currentLayer = 'rain';
 let layers = {};
 let state = { weather: null, aqi: null, location: null, settings: null };
 
+// Rain uses RainViewer (URL set at runtime). Other layers use Open-Meteo data
+// rendered as custom canvas overlays — OWM demo-key tiles bake
+// "Zoom Level Not Supported" text into every image above zoom 2.
 const LAYER_CONFIGS = {
-  rain: {
-    label: 'Rain', icon: '💧',
-    // URL is replaced at runtime by fetchLatestRainViewerFrame() before initMap().
-    // The coverage/0 fallback is intentionally omitted to avoid "Zoom not
-    // supported" tiles (timestamp 0 is invalid → RainViewer returns error images).
-    url: null,
-    attribution: '© RainViewer', opacity: 0.7, fallback: true,
-  },
-  clouds: {
-    label: 'Clouds', icon: '☁️',
-    url: 'https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=demo',
-    attribution: '© OpenWeatherMap', opacity: 0.6, fallback: true,
-    maxNativeZoom: 7,
-  },
-  wind: {
-    label: 'Wind', icon: '💨',
-    url: 'https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=demo',
-    attribution: '© OpenWeatherMap', opacity: 0.65, fallback: true,
-    maxNativeZoom: 7,
-  },
-  aqi: {
-    label: 'AQI', icon: '🌿',
-    url: null,
-    attribution: '© AeroSense', opacity: 0.5, fallback: true,
-    maxNativeZoom: 7,
-  },
-  temp: {
-    label: 'Temp', icon: '🌡',
-    url: 'https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=demo',
-    attribution: '© OpenWeatherMap', opacity: 0.6, fallback: true,
-    maxNativeZoom: 7,
-  },
+  rain:   { label:'Rain',        icon:'rain',   isTile:true,  url:null, attribution:'© RainViewer', opacity:0.7 },
+  clouds: { label:'Clouds',      icon:'clouds', isTile:false, unit:'%',    field:'cloud_cover',    colorFn: cloudColor  },
+  wind:   { label:'Wind',        icon:'wind',   isTile:false, unit:'km/h', field:'wind_speed_10m', colorFn: windColor   },
+  aqi:    { label:'AQI',         icon:'aqi',    isTile:false, unit:'AQI',  field:'aqi',            colorFn: aqiColor    },
+  temp:   { label:'Temperature', icon:'temp',   isTile:false, unit:'°C',   field:'temperature_2m', colorFn: tempColor   },
 };
+
+// ── Colour helpers for custom overlay layers ─────────────────────────────
+function cloudColor(v)  { if(v<20) return '#93c5fd'; if(v<50) return '#60a5fa'; if(v<80) return '#3b82f6'; return '#1d4ed8'; }
+function windColor(v)   { if(v<10) return '#22c55e'; if(v<30) return '#eab308'; if(v<60) return '#f97316'; return '#ef4444'; }
+function aqiColor(v)    { if(v<=50) return '#22c55e'; if(v<=100) return '#eab308'; if(v<=150) return '#f97316'; if(v<=200) return '#ef4444'; return '#7c3aed'; }
+function tempColor(v)   { if(v<5) return '#3b82f6'; if(v<15) return '#06b6d4'; if(v<25) return '#22c55e'; if(v<32) return '#eab308'; return '#ef4444'; }
+
+// Active custom overlay group (L.layerGroup for non-tile layers)
+let customOverlay = null;
 
 /**
  * Fetch the most recent radar frame from the RainViewer public API and update
@@ -140,6 +125,11 @@ function initMap() {
     bounceAtZoomLimits: false,
   });
 
+  // Fix scroll-wheel zoom: the parent .main-content is scrollable and captures
+  // wheel events before they reach Leaflet. Stopping propagation here gives
+  // Leaflet exclusive control over wheel events while the cursor is on the map.
+  mapEl?.addEventListener('wheel', e => e.stopPropagation(), { passive: false });
+
   // Force Leaflet to recalculate size after first render tick
   requestAnimationFrame(() => {
     setTimeout(() => { if (map) map.invalidateSize({ animate: false }); }, 100);
@@ -180,27 +170,161 @@ function initMap() {
   addWeatherLayer('rain');
 }
 
+// ── Layer switching: tiles for rain, custom canvas for all others ─────────
 function addWeatherLayer(type) {
+  // Remove old tile layer
   if (layers.active) { map.removeLayer(layers.active); layers.active = null; }
+  // Remove old custom overlay
+  if (customOverlay) { map.removeLayer(customOverlay); customOverlay = null; }
+
   const config = LAYER_CONFIGS[type];
-  if (!config || !config.url) return;
-  try {
-    const tl = L.tileLayer(config.url, {
-      opacity: config.opacity,
-      attribution: config.attribution,
-      // Transparent 1×1 PNG replaces error-text tiles (e.g. "Zoom not supported"
-      // images baked into OpenWeatherMap demo-key tiles at high zoom levels).
-      errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-      // Cap tile requests to the layer's supported zoom range.
-      // Leaflet scales the capped tiles up, preventing out-of-range requests.
-      maxNativeZoom: config.maxNativeZoom ?? 10,
-    });
-    tl.addTo(map);
-    layers.active = tl;
-    tl.on('tileerror', () => {}); // silently ignore tile errors (demo API keys)
-  } catch (e) {
-    console.warn('[Radar] Layer error:', e);
+  if (!config) return;
+
+  if (config.isTile) {
+    // RainViewer tile layer
+    if (!config.url) return;
+    try {
+      const tl = L.tileLayer(config.url, {
+        opacity: config.opacity,
+        attribution: config.attribution,
+        errorTileUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        maxNativeZoom: 18,
+      });
+      tl.addTo(map);
+      layers.active = tl;
+      tl.on('tileerror', () => {});
+    } catch(e) { console.warn('[Radar] Tile layer error:', e); }
+  } else {
+    // Custom Open-Meteo canvas overlay — no OWM demo tile issues
+    addCustomOverlay(type);
   }
+}
+
+// ── Open-Meteo powered custom overlay ─────────────────────────────────────
+// Fetches a 3×3 grid of points around the current map center and renders
+// coloured circle markers with the actual metric values.
+async function addCustomOverlay(type) {
+  const config = LAYER_CONFIGS[type];
+  const center = map.getCenter();
+  const lat = center.lat, lon = center.lng;
+
+  // Show loading indicator on the layer button
+  const btn = document.querySelector(`.layer-btn[data-layer="${type}"]`);
+  if (btn) btn.classList.add('layer-loading');
+
+  try {
+    // 3×3 grid, ~1.5° apart (≈165 km)
+    const offsets = [-1.5, 0, 1.5];
+    const points = [];
+    for (const dlat of offsets) for (const dlon of offsets) {
+      points.push({ lat: lat+dlat, lon: lon+dlon });
+    }
+
+    // Batch via Promise.all — Open-Meteo allows many parallel requests
+    const results = await Promise.all(points.map(async p => {
+      try {
+        const fields = type === 'aqi'
+          ? null  // AQI uses separate endpoint
+          : [config.field, 'wind_direction_10m'].filter(Boolean).join(',');
+
+        if (type === 'aqi') {
+          const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${p.lat}&longitude=${p.lon}&current=us_aqi&hourly=us_aqi&forecast_days=1`;
+          const res = await fetch(url);
+          const d   = await res.json();
+          return { ...p, value: d.current?.us_aqi ?? null };
+        } else {
+          const url = `https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&current=${fields}&forecast_days=1`;
+          const res = await fetch(url);
+          const d   = await res.json();
+          const raw = d.current?.[config.field];
+          const windDir = d.current?.wind_direction_10m ?? null;
+          return { ...p, value: raw ?? null, windDir };
+        }
+      } catch { return { ...p, value: null }; }
+    }));
+
+    customOverlay = L.layerGroup();
+
+    for (const pt of results) {
+      if (pt.value === null) continue;
+      const v     = Math.round(pt.value * 10) / 10;
+      const color = config.colorFn(v);
+
+      // Translucent filled circle covering ~80 km radius
+      L.circle([pt.lat, pt.lon], {
+        radius: 80000,
+        color,
+        fillColor: color,
+        fillOpacity: 0.18,
+        weight: 1,
+        opacity: 0.4,
+      }).addTo(customOverlay);
+
+      // Value label marker
+      const labelHtml = type === 'wind'
+        ? buildWindMarker(v, pt.windDir, color)
+        : buildValueMarker(v, config.unit, color);
+
+      L.marker([pt.lat, pt.lon], {
+        icon: L.divIcon({
+          className: '',
+          html: labelHtml,
+          iconSize:   [80, 44],
+          iconAnchor: [40, 22],
+        }),
+        interactive: false,
+        keyboard: false,
+      }).addTo(customOverlay);
+    }
+
+    customOverlay.addTo(map);
+    updateLayerLegend(type);
+  } catch(e) {
+    console.warn('[Radar] Custom overlay error:', e);
+  } finally {
+    if (btn) btn.classList.remove('layer-loading');
+  }
+}
+
+function buildValueMarker(value, unit, color) {
+  return `<div style="
+    background:${color};color:#fff;
+    padding:4px 8px;border-radius:8px;
+    font-size:13px;font-weight:700;
+    text-align:center;white-space:nowrap;
+    box-shadow:0 2px 6px rgba(0,0,0,.4);
+    pointer-events:none;
+  ">${value}<span style="font-size:10px;font-weight:400;opacity:.85"> ${unit}</span></div>`;
+}
+
+function buildWindMarker(speed, dir, color) {
+  const arrow = dir !== null
+    ? `<div style="transform:rotate(${dir}deg);font-size:16px;line-height:1">↑</div>`
+    : '';
+  return `<div style="
+    background:${color};color:#fff;
+    padding:4px 8px;border-radius:8px;
+    font-size:13px;font-weight:700;
+    text-align:center;white-space:nowrap;
+    box-shadow:0 2px 6px rgba(0,0,0,.4);
+    pointer-events:none;
+  ">${arrow}${speed}<span style="font-size:10px;font-weight:400;opacity:.85"> km/h</span></div>`;
+}
+
+function updateLayerLegend(type) {
+  const legends = {
+    clouds: [{c:'#93c5fd',l:'<20%'},{c:'#60a5fa',l:'20–50%'},{c:'#3b82f6',l:'50–80%'},{c:'#1d4ed8',l:'>80%'}],
+    wind:   [{c:'#22c55e',l:'<10'},{c:'#eab308',l:'10–30'},{c:'#f97316',l:'30–60'},{c:'#ef4444',l:'>60 km/h'}],
+    aqi:    [{c:'#22c55e',l:'Good'},{c:'#eab308',l:'Mod.'},{c:'#f97316',l:'Unhlthy'},{c:'#ef4444',l:'V.Unhlthy'},{c:'#7c3aed',l:'Hazard'}],
+    temp:   [{c:'#3b82f6',l:'<5°C'},{c:'#06b6d4',l:'5–15°C'},{c:'#22c55e',l:'15–25°C'},{c:'#eab308',l:'25–32°C'},{c:'#ef4444',l:'>32°C'}],
+  };
+  const items = legends[type] || [];
+  const bar = document.getElementById('layer-legend-bar');
+  if (!bar) return;
+  bar.innerHTML = items.map(i =>
+    `<span class="legend-item"><span class="legend-dot" style="background:${i.c}"></span>${i.l}</span>`
+  ).join('');
+  bar.style.display = items.length ? '' : 'none';
 }
 
 function setupLayerButtons() {
@@ -211,7 +335,16 @@ function setupLayerButtons() {
       document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       addWeatherLayer(type);
+      // Hide legend for rain (tile layer), show for others
+      const bar = document.getElementById('layer-legend-bar');
+      if (bar) bar.style.display = type === 'rain' ? 'none' : '';
     });
+  });
+  // Re-fetch custom overlays when user pans/zooms so data stays relevant
+  map.on('moveend', () => {
+    if (LAYER_CONFIGS[currentLayer] && !LAYER_CONFIGS[currentLayer].isTile) {
+      addCustomOverlay(currentLayer);
+    }
   });
   const rainBtn = document.querySelector('[data-layer="rain"]');
   if (rainBtn) rainBtn.classList.add('active');

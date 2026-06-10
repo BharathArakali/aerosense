@@ -508,6 +508,7 @@ async function runCompare() {
     renderResults();
     el('cmp-loading').style.display = 'none';
     el('compare-results').style.display = '';
+    renderResetBtn();
     el('compare-results').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (e) {
     el('cmp-loading').style.display = 'none';
@@ -517,6 +518,44 @@ async function runCompare() {
 }
 
 // ── Render Results ─────────────────────────────────────────
+function renderResetBtn() {
+  // Add/refresh a "New Comparison" button at the top of the results pane
+  let btn = el('cmp-reset-btn');
+  if (!btn) {
+    btn = document.createElement('div');
+    btn.id = 'cmp-reset-btn';
+    btn.innerHTML = `
+      <button class="cmp-reset-action">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M1 4v6h6M23 20v-6h-6"/><path stroke-linecap="round" d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15"/></svg>
+        New Comparison
+      </button>`;
+    btn.querySelector('.cmp-reset-action').addEventListener('click', resetComparison);
+    const results = el('compare-results');
+    results.insertBefore(btn, results.firstChild);
+  }
+}
+
+function resetComparison() {
+  // Clear state
+  state.cityA = null; state.cityB = null;
+  state.weatherA = null; state.weatherB = null;
+  state.aqiA = null; state.aqiB = null;
+  // Destroy maps
+  if (state.mapA) { state.mapA.remove(); state.mapA = null; }
+  if (state.mapB) { state.mapB.remove(); state.mapB = null; }
+  if (state.radarChart) { state.radarChart.destroy(); state.radarChart = null; }
+  if (state.barChart)   { state.barChart.destroy();   state.barChart = null; }
+  // Reset city slots
+  clearCity('a'); clearCity('b');
+  el('input-a').value = ''; el('input-b').value = '';
+  // Hide results, show empty state
+  el('compare-results').style.display = 'none';
+  const emptyState = el('cmp-empty-state');
+  if (emptyState) emptyState.style.display = '';
+  // Scroll to top of page
+  el('compare-page')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function renderResults() {
   const scoreA = calcCityScore(state.weatherA, state.aqiA);
   const scoreB = calcCityScore(state.weatherB, state.aqiB);

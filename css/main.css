@@ -2594,3 +2594,29 @@ input, select, textarea { font-family: inherit; }
   color: var(--text-secondary);
   line-height: 1.5;
 }
+
+/* ── Compare reset button ─────────────────────────────────────────────────── */
+#cmp-reset-btn {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-lg);
+}
+.cmp-reset-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.cmp-reset-action:hover {
+  background: var(--hover-bg);
+  border-color: var(--primary-color);
+  color: var(--text-primary);
+}
