@@ -204,6 +204,10 @@ function addWeatherLayer(type) {
 // Fetches a 3×3 grid of points around the current map center and renders
 // coloured circle markers with the actual metric values.
 async function addCustomOverlay(type) {
+  // Always remove any existing custom overlay first (covers both direct calls
+  // from addWeatherLayer and the moveend re-fetch, preventing stacking)
+  if (customOverlay) { map.removeLayer(customOverlay); customOverlay = null; }
+
   const config = LAYER_CONFIGS[type];
   const center = map.getCenter();
   const lat = center.lat, lon = center.lng;
@@ -340,10 +344,13 @@ function setupLayerButtons() {
       if (bar) bar.style.display = type === 'rain' ? 'none' : '';
     });
   });
-  // Re-fetch custom overlays when user pans/zooms so data stays relevant
+  // Re-fetch custom overlays when user pans/zooms so data stays relevant.
+  // Debounced 600 ms so rapid panning doesn't fire multiple parallel requests.
+  let moveendTimer = null;
   map.on('moveend', () => {
     if (LAYER_CONFIGS[currentLayer] && !LAYER_CONFIGS[currentLayer].isTile) {
-      addCustomOverlay(currentLayer);
+      clearTimeout(moveendTimer);
+      moveendTimer = setTimeout(() => addCustomOverlay(currentLayer), 600);
     }
   });
   const rainBtn = document.querySelector('[data-layer="rain"]');

@@ -4,7 +4,7 @@
    Deployed at: https://bharatharakali.github.io/aerosense/
    ============================================================ */
 
-const CACHE_NAME    = 'aerosense-v3.4.0';
+const CACHE_NAME    = 'aerosense-v3.5.0';
 const DYNAMIC_CACHE = 'aerosense-dynamic-v2';
 
 // Base path on GitHub Pages (empty string = served from root / local dev)

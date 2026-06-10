@@ -314,12 +314,12 @@ function calcCityScore(weather, aqi) {
   const c = weather?.current;
   if (!c) return { total: 0, components: {} };
 
-  const aqiVal  = aqi?.current?.us_aqi ?? 60;
-  const temp    = c.temperature_2m ?? 22;
-  const humidity= c.relative_humidity_2m ?? 50;
-  const uv      = c.uv_index ?? 3;
-  const wind    = c.wind_speed_10m ?? 10;
-  const rain    = weather?.daily?.precipitation_probability_max?.[0] ?? 20;
+  const aqiVal  = aqi?.current?.aqi ?? 60;
+  const temp    = c.temp ?? 22;
+  const humidity= c.humidity ?? 50;
+  const uv      = c.uvIndex ?? 3;
+  const wind    = c.windSpeed ?? 10;
+  const rain    = weather?.daily?.[0]?.precipProb ?? 20;
 
   const aqiScore  = clamp(100 - (aqiVal / 3), 0, 100);
   const tempScore = clamp(100 - Math.abs(temp - 22) * 3.5, 0, 100);
@@ -355,12 +355,12 @@ const ACTIVITIES = [
 function calcActivityScore(activity, weather, aqi) {
   const c = weather?.current;
   if (!c) return 0;
-  const aqiVal  = aqi?.current?.us_aqi ?? 60;
-  const temp    = c.temperature_2m ?? 22;
-  const humidity= c.relative_humidity_2m ?? 50;
-  const uv      = c.uv_index ?? 3;
-  const wind    = c.wind_speed_10m ?? 10;
-  const cloud   = c.cloud_cover ?? 30;
+  const aqiVal  = aqi?.current?.aqi ?? 60;
+  const temp    = c.temp ?? 22;
+  const humidity= c.humidity ?? 50;
+  const uv      = c.uvIndex ?? 3;
+  const wind    = c.windSpeed ?? 10;
+  const cloud   = c.cloudCover ?? 30;
 
   const sc = {
     aqi:  clamp(100 - aqiVal / 3,              0, 100),
@@ -622,15 +622,15 @@ function renderDecisionCard(scoreA, scoreB) {
   el('decision-city').textContent = winner.city;
 
   const cA = state.weatherA?.current, cB = state.weatherB?.current;
-  const aqiA = state.aqiA?.current?.us_aqi ?? 60;
-  const aqiB = state.aqiB?.current?.us_aqi ?? 60;
+  const aqiA = state.aqiA?.current?.aqi ?? 60;
+  const aqiB = state.aqiB?.current?.aqi ?? 60;
   const reasons = [];
   if (aqiA < aqiB - 10 && scoreA.total >= scoreB.total) reasons.push('cleaner air');
   if (aqiB < aqiA - 10 && scoreB.total >= scoreA.total) reasons.push('cleaner air');
   if (cA && cB) {
-    if (Math.abs((cA.uv_index || 0) - (cB.uv_index || 0)) > 1)
+    if (Math.abs((cA.uvIndex || 0) - (cB.uvIndex || 0)) > 1)
       reasons.push(scoreA.components.uvScore > scoreB.components.uvScore ? 'lower UV exposure' : 'better UV conditions');
-    if (Math.abs((cA.relative_humidity_2m || 50) - (cB.relative_humidity_2m || 50)) > 10)
+    if (Math.abs((cA.humidity || 50) - (cB.humidity || 50)) > 10)
       reasons.push('better humidity comfort');
   }
   reasons.push('better overall environmental score');
@@ -641,23 +641,23 @@ function renderDecisionCard(scoreA, scoreB) {
 function renderMetricsTable() {
   const cA = state.weatherA?.current || {};
   const cB = state.weatherB?.current || {};
-  const aqiA = state.aqiA?.current?.us_aqi ?? '–';
-  const aqiB = state.aqiB?.current?.us_aqi ?? '–';
+  const aqiA = state.aqiA?.current?.aqi ?? '–';
+  const aqiB = state.aqiB?.current?.aqi ?? '–';
 
   el('tbl-name-a').textContent = state.cityA.name.split(',')[0];
   el('tbl-name-b').textContent = state.cityB.name.split(',')[0];
 
   const metrics = [
-    { label: 'Temperature',  icon: '🌡️', vA: `${Math.round(cA.temperature_2m ?? 0)}°C`,          vB: `${Math.round(cB.temperature_2m ?? 0)}°C`,          numA: cA.temperature_2m,          numB: cB.temperature_2m,          lowerBetter: false, comfort: true },
-    { label: 'Feels Like',   icon: '🤔', vA: `${Math.round(cA.apparent_temperature ?? 0)}°C`,     vB: `${Math.round(cB.apparent_temperature ?? 0)}°C`,     numA: cA.apparent_temperature,    numB: cB.apparent_temperature,    lowerBetter: false, comfort: true },
-    { label: 'AQI',          icon: '💨', vA: `${aqiA}`,                                           vB: `${aqiB}`,                                           numA: +aqiA,                      numB: +aqiB,                      lowerBetter: true,  comfort: false },
-    { label: 'Humidity',     icon: '💧', vA: `${cA.relative_humidity_2m ?? 0}%`,                  vB: `${cB.relative_humidity_2m ?? 0}%`,                  numA: cA.relative_humidity_2m,    numB: cB.relative_humidity_2m,    lowerBetter: false, comfort: true },
-    { label: 'UV Index',     icon: '☀️', vA: `${cA.uv_index ?? 0}`,                               vB: `${cB.uv_index ?? 0}`,                               numA: cA.uv_index,                numB: cB.uv_index,                lowerBetter: true,  comfort: false },
-    { label: 'Wind Speed',   icon: '🌬️', vA: `${Math.round(cA.wind_speed_10m ?? 0)} km/h`,        vB: `${Math.round(cB.wind_speed_10m ?? 0)} km/h`,        numA: cA.wind_speed_10m,          numB: cB.wind_speed_10m,          lowerBetter: true,  comfort: false },
-    { label: 'Pressure',     icon: '🔵', vA: `${Math.round(cA.surface_pressure ?? 1013)} hPa`,    vB: `${Math.round(cB.surface_pressure ?? 1013)} hPa`,    numA: null,                        numB: null,                        lowerBetter: false, comfort: false },
-    { label: 'Visibility',   icon: '👁️', vA: `${Math.round((cA.visibility ?? 10000)/1000)} km`,   vB: `${Math.round((cB.visibility ?? 10000)/1000)} km`,   numA: cA.visibility,              numB: cB.visibility,              lowerBetter: false, comfort: false },
-    { label: 'Cloud Cover',  icon: '☁️', vA: `${cA.cloud_cover ?? 0}%`,                           vB: `${cB.cloud_cover ?? 0}%`,                           numA: cA.cloud_cover,              numB: cB.cloud_cover,             lowerBetter: true,  comfort: false },
-    { label: 'Rain Prob.',   icon: '🌧️', vA: `${state.weatherA?.daily?.precipitation_probability_max?.[0] ?? 0}%`, vB: `${state.weatherB?.daily?.precipitation_probability_max?.[0] ?? 0}%`, numA: state.weatherA?.daily?.precipitation_probability_max?.[0] ?? 0, numB: state.weatherB?.daily?.precipitation_probability_max?.[0] ?? 0, lowerBetter: true, comfort: false },
+    { label: 'Temperature',  icon: '🌡️', vA: `${Math.round(cA.temp ?? 0)}°C`,              vB: `${Math.round(cB.temp ?? 0)}°C`,              numA: cA.temp,         numB: cB.temp,         lowerBetter: false, comfort: true  },
+    { label: 'Feels Like',   icon: '🤔', vA: `${Math.round(cA.feelsLike ?? 0)}°C`,          vB: `${Math.round(cB.feelsLike ?? 0)}°C`,          numA: cA.feelsLike,    numB: cB.feelsLike,    lowerBetter: false, comfort: true  },
+    { label: 'AQI',          icon: '💨', vA: `${aqiA}`,                                     vB: `${aqiB}`,                                     numA: +aqiA,           numB: +aqiB,           lowerBetter: true,  comfort: false },
+    { label: 'Humidity',     icon: '💧', vA: `${cA.humidity ?? 0}%`,                         vB: `${cB.humidity ?? 0}%`,                         numA: cA.humidity,     numB: cB.humidity,     lowerBetter: false, comfort: true  },
+    { label: 'UV Index',     icon: '☀️', vA: `${cA.uvIndex ?? 0}`,                           vB: `${cB.uvIndex ?? 0}`,                           numA: cA.uvIndex,      numB: cB.uvIndex,      lowerBetter: true,  comfort: false },
+    { label: 'Wind Speed',   icon: '🌬️', vA: `${Math.round(cA.windSpeed ?? 0)} km/h`,        vB: `${Math.round(cB.windSpeed ?? 0)} km/h`,        numA: cA.windSpeed,    numB: cB.windSpeed,    lowerBetter: true,  comfort: false },
+    { label: 'Pressure',     icon: '🔵', vA: `${Math.round(cA.pressure ?? 1013)} hPa`,       vB: `${Math.round(cB.pressure ?? 1013)} hPa`,       numA: null,            numB: null,            lowerBetter: false, comfort: false },
+    { label: 'Visibility',   icon: '👁️', vA: `${(cA.visibility ?? 10).toFixed(1)} km`,       vB: `${(cB.visibility ?? 10).toFixed(1)} km`,       numA: cA.visibility,   numB: cB.visibility,   lowerBetter: false, comfort: false },
+    { label: 'Cloud Cover',  icon: '☁️', vA: `${cA.cloudCover ?? 0}%`,                       vB: `${cB.cloudCover ?? 0}%`,                       numA: cA.cloudCover,   numB: cB.cloudCover,   lowerBetter: true,  comfort: false },
+    { label: 'Rain Prob.',   icon: '🌧️', vA: `${state.weatherA?.daily?.[0]?.precipProb ?? 0}%`, vB: `${state.weatherB?.daily?.[0]?.precipProb ?? 0}%`, numA: state.weatherA?.daily?.[0]?.precipProb ?? 0, numB: state.weatherB?.daily?.[0]?.precipProb ?? 0, lowerBetter: true, comfort: false },
   ];
 
   el('metrics-table').innerHTML = metrics.map(m => {
@@ -697,14 +697,14 @@ function renderCategoryWinners(scoreA, scoreB) {
   const aqiB = state.aqiB?.current?.us_aqi ?? 60;
 
   const cats = [
-    { label: 'Air Quality',       icon: '💨', winner: aqiA <= aqiB ? nameA : nameB },
-    { label: 'Comfort',           icon: '😊', winner: scoreA.components.humScore + scoreA.components.tempScore >= scoreB.components.humScore + scoreB.components.tempScore ? nameA : nameB },
-    { label: 'Outdoor Activities',icon: '🏃', winner: calcActivityScore(ACTIVITIES[1], state.weatherA, state.aqiA) >= calcActivityScore(ACTIVITIES[1], state.weatherB, state.aqiB) ? nameA : nameB },
-    { label: 'Travel',            icon: '✈️', winner: scoreA.total >= scoreB.total ? nameA : nameB },
-    { label: 'Photography',       icon: '📷', winner: calcActivityScore(ACTIVITIES[5], state.weatherA, state.aqiA) >= calcActivityScore(ACTIVITIES[5], state.weatherB, state.aqiB) ? nameA : nameB },
-    { label: 'Running',           icon: '🏃', winner: calcActivityScore(ACTIVITIES[1], state.weatherA, state.aqiA) >= calcActivityScore(ACTIVITIES[1], state.weatherB, state.aqiB) ? nameA : nameB },
-    { label: 'Cycling',           icon: '🚴', winner: calcActivityScore(ACTIVITIES[2], state.weatherA, state.aqiA) >= calcActivityScore(ACTIVITIES[2], state.weatherB, state.aqiB) ? nameA : nameB },
-    { label: 'Stargazing',        icon: '🔭', winner: calcActivityScore(ACTIVITIES[7], state.weatherA, state.aqiA) >= calcActivityScore(ACTIVITIES[7], state.weatherB, state.aqiB) ? nameA : nameB },
+    { label: 'Air Quality',        icon: '💨', winner: aqiA <= aqiB ? nameA : nameB },
+    { label: 'Comfort',            icon: '😊', winner: scoreA.components.humScore + scoreA.components.tempScore >= scoreB.components.humScore + scoreB.components.tempScore ? nameA : nameB },
+    { label: 'Outdoor Activities', icon: '🏃', winner: calcActivityScore(ACTIVITIES[1], state.weatherA, state.aqiA) >= calcActivityScore(ACTIVITIES[1], state.weatherB, state.aqiB) ? nameA : nameB },
+    { label: 'Travel',             icon: '✈️', winner: scoreA.total >= scoreB.total ? nameA : nameB },
+    { label: 'Photography',        icon: '📷', winner: calcActivityScore(ACTIVITIES[5], state.weatherA, state.aqiA) >= calcActivityScore(ACTIVITIES[5], state.weatherB, state.aqiB) ? nameA : nameB },
+    { label: 'Running',            icon: '🏃', winner: calcActivityScore(ACTIVITIES[1], state.weatherA, state.aqiA) >= calcActivityScore(ACTIVITIES[1], state.weatherB, state.aqiB) ? nameA : nameB },
+    { label: 'Cycling',            icon: '🚴', winner: calcActivityScore(ACTIVITIES[2], state.weatherA, state.aqiA) >= calcActivityScore(ACTIVITIES[2], state.weatherB, state.aqiB) ? nameA : nameB },
+    { label: 'Stargazing',         icon: '🔭', winner: calcActivityScore(ACTIVITIES[7], state.weatherA, state.aqiA) >= calcActivityScore(ACTIVITIES[7], state.weatherB, state.aqiB) ? nameA : nameB },
   ];
 
   el('category-winners').innerHTML = cats.map(c => `
@@ -754,8 +754,8 @@ function renderSmartRecs(scoreA, scoreB) {
   const nameB = state.cityB.name.split(',')[0];
   const cA = state.weatherA?.current || {};
   const cB = state.weatherB?.current || {};
-  const aqiA = state.aqiA?.current?.us_aqi ?? 60;
-  const aqiB = state.aqiB?.current?.us_aqi ?? 60;
+  const aqiA = state.aqiA?.current?.aqi ?? 60;
+  const aqiB = state.aqiB?.current?.aqi ?? 60;
   const winner = scoreA.total >= scoreB.total ? nameA : nameB;
 
   const recs = [];
@@ -768,7 +768,7 @@ function renderSmartRecs(scoreA, scoreB) {
   }
 
   // Temperature
-  const tempA = cA.temperature_2m ?? 22, tempB = cB.temperature_2m ?? 22;
+  const tempA = cA.temp ?? 22, tempB = cB.temp ?? 22;
   const comfA = Math.abs(tempA - 22), comfB = Math.abs(tempB - 22);
   if (Math.abs(comfA - comfB) > 3) {
     const better = comfA < comfB ? nameA : nameB;
@@ -776,7 +776,7 @@ function renderSmartRecs(scoreA, scoreB) {
   }
 
   // UV
-  const uvA = cA.uv_index ?? 3, uvB = cB.uv_index ?? 3;
+  const uvA = cA.uvIndex ?? 3, uvB = cB.uvIndex ?? 3;
   if (Math.abs(uvA - uvB) > 1) {
     const better = uvA < uvB ? nameA : nameB;
     recs.push({ icon: '☀️', text: `${better} has lower UV exposure (UV ${Math.min(uvA, uvB).toFixed(1)} vs ${Math.max(uvA, uvB).toFixed(1)}) — better for extended outdoor time.` });
@@ -795,7 +795,9 @@ function renderSmartRecs(scoreA, scoreB) {
   const photoB = calcActivityScore(ACTIVITIES[5], state.weatherB, state.aqiB);
   if (Math.abs(photoA - photoB) > 8) {
     const better = photoA >= photoB ? nameA : nameB;
-    recs.push({ icon: '📷', text: `${better} provides better photography conditions with ${better === nameA ? (cA.cloud_cover ?? 0) : (cB.cloud_cover ?? 0)}% cloud cover and ${better === nameA ? (cA.visibility ?? 10000)/1000 : (cB.visibility ?? 10000)/1000} km visibility.` });
+    const betterCloud = better === nameA ? (cA.cloudCover ?? 0) : (cB.cloudCover ?? 0);
+    const betterVis   = better === nameA ? (cA.visibility ?? 10) : (cB.visibility ?? 10);
+    recs.push({ icon: '📷', text: `${better} provides better photography conditions with ${betterCloud}% cloud cover and ${betterVis.toFixed(1)} km visibility.` });
   }
 
   if (!recs.length) {
@@ -903,19 +905,20 @@ function renderForecast(mode) {
   const wrap = el('forecast-cmp-content');
 
   if (mode === 'hourly') {
+    // weatherA/B.hourly is an array of objects: [{time, temp, precipProb, ...}, ...]
     const hA = state.weatherA?.hourly, hB = state.weatherB?.hourly;
-    if (!hA || !hB) { wrap.innerHTML = '<div class="page-subtitle" style="text-align:center;padding:16px">No forecast data</div>'; return; }
+    if (!hA?.length || !hB?.length) { wrap.innerHTML = '<div class="page-subtitle" style="text-align:center;padding:16px">No forecast data</div>'; return; }
 
-    const slots = Math.min(12, hA.time?.length || 0);
+    const slots = Math.min(12, hA.length);
     let html = '<div class="fc-cmp-scroll"><div class="fc-cmp-grid">';
     html += `<div class="fch-header"><span>${nameA}</span><span>Time</span><span>${nameB}</span></div>`;
     for (let i = 0; i < slots; i++) {
-      const t = hA.time?.[i] ? new Date(hA.time[i]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '–';
-      const tA = Math.round(hA.temperature_2m?.[i] ?? 0);
-      const tB = Math.round(hB.temperature_2m?.[i] ?? 0);
-      const pA = hA.precipitation_probability?.[i] ?? 0;
-      const pB = hB.precipitation_probability?.[i] ?? 0;
-      const winT_A = tA >= tB, winP_B = pA >= pB;
+      const t = hA[i]?.time ? new Date(hA[i].time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '–';
+      const tA = Math.round(hA[i]?.temp ?? 0);
+      const tB = Math.round(hB[i]?.temp ?? 0);
+      const pA = hA[i]?.precipProb ?? 0;
+      const pB = hB[i]?.precipProb ?? 0;
+      const winT_A = tA >= tB;
       html += `<div class="fch-row">
         <div class="fch-city-a"><span class="fch-temp ${winT_A ? 'fch-win' : ''}">${tA}°</span><span class="fch-rain">${pA}% 🌧</span></div>
         <div class="fch-time">${t}</div>
@@ -925,21 +928,22 @@ function renderForecast(mode) {
     html += '</div></div>';
     wrap.innerHTML = html;
   } else {
+    // weatherA/B.daily is an array of objects: [{date, tempMax, tempMin, precipProb, ...}, ...]
     const dA = state.weatherA?.daily, dB = state.weatherB?.daily;
-    if (!dA || !dB) { wrap.innerHTML = '<div class="page-subtitle" style="text-align:center;padding:16px">No forecast data</div>'; return; }
+    if (!dA?.length || !dB?.length) { wrap.innerHTML = '<div class="page-subtitle" style="text-align:center;padding:16px">No forecast data</div>'; return; }
 
     const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    const slots = Math.min(7, dA.time?.length || 0);
+    const slots = Math.min(7, dA.length);
     let html = '<div class="fc-cmp-scroll"><div class="fc-cmp-grid">';
     html += `<div class="fch-header"><span>${nameA}</span><span>Day</span><span>${nameB}</span></div>`;
     for (let i = 0; i < slots; i++) {
-      const d = dA.time?.[i] ? days[new Date(dA.time[i]).getDay()] : '–';
-      const hiA = Math.round(dA.temperature_2m_max?.[i] ?? 0);
-      const loA = Math.round(dA.temperature_2m_min?.[i] ?? 0);
-      const hiB = Math.round(dB.temperature_2m_max?.[i] ?? 0);
-      const loB = Math.round(dB.temperature_2m_min?.[i] ?? 0);
-      const pA = dA.precipitation_probability_max?.[i] ?? 0;
-      const pB = dB.precipitation_probability_max?.[i] ?? 0;
+      const d = dA[i]?.date ? days[new Date(dA[i].date).getDay()] : '–';
+      const hiA = Math.round(dA[i]?.tempMax ?? 0);
+      const loA = Math.round(dA[i]?.tempMin ?? 0);
+      const hiB = Math.round(dB[i]?.tempMax ?? 0);
+      const loB = Math.round(dB[i]?.tempMin ?? 0);
+      const pA = dA[i]?.precipProb ?? 0;
+      const pB = dB[i]?.precipProb ?? 0;
       html += `<div class="fch-row">
         <div class="fch-city-a"><span class="fch-temp">${hiA}°/${loA}°</span><span class="fch-rain">${pA}% 🌧</span></div>
         <div class="fch-time">${d}</div>
