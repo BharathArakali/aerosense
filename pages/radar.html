@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <meta name="theme-color" content="#0d1117"/>
   <title>Radar Map – AeroSense</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link rel="manifest" href="../manifest.json"/>
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png"/>
   <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png"/>
@@ -53,17 +55,54 @@
       transition: background var(--transition-fast);
     }
 
-    .layer-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: var(--space-lg); }
+    /* ── Layer tabs ─────────────────────────────────────────────────── */
+    .layer-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: var(--space-md); }
     .layer-btn {
-      display: flex; align-items: center; gap: 6px;
-      padding: 7px 14px;
+      display: flex; align-items: center; gap: 7px;
+      padding: 8px 16px;
       border-radius: var(--radius-full);
       font-size: var(--text-sm); font-weight: 600;
       cursor: pointer;
-      transition: background var(--transition-fast), color var(--transition-fast);
+      border: 1.5px solid var(--border-primary);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      transition: background 0.18s, color 0.18s, border-color 0.18s, box-shadow 0.18s;
+      position: relative;
     }
-    [data-theme="dark"]  .layer-btn.active,
-    [data-theme="light"] .layer-btn.active { background: var(--color-brand) !important; color: #fff !important; }
+    .layer-btn svg { flex-shrink: 0; }
+    .layer-btn:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--color-brand);
+      color: var(--text-primary);
+    }
+    .layer-btn.active {
+      background: var(--color-brand) !important;
+      border-color: var(--color-brand) !important;
+      color: #fff !important;
+      box-shadow: 0 2px 10px rgba(59,130,246,.4);
+    }
+    .layer-btn.layer-loading::after {
+      content: '';
+      position: absolute; top: 4px; right: 4px;
+      width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor; opacity: .6;
+      animation: pulse-dot 1s infinite;
+    }
+    /* ── Layer legend bar ──────────────────────────────────────────── */
+    #layer-legend-bar {
+      display: none;
+      flex-wrap: wrap; gap: 8px 14px;
+      padding: 8px 14px;
+      border-radius: var(--radius-lg);
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      margin-bottom: var(--space-lg);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-dot   { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 
     /* Info-panel row separators */
     .info-row {
@@ -89,10 +128,11 @@
       <img class="logo-icon as-logo-img" src="../assets/icon-192.png" alt="AeroSense" width="32" height="32" style="border-radius:8px;object-fit:cover;flex-shrink:0;display:block;"/>
       <span class="logo-text"><span class="logo-aero">Aero</span>Sense</span>
     </div>
-    <nav class="sidebar-nav">
+        <nav class="sidebar-nav">
       <a href="../index.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path stroke-linecap="round" d="M9 21V12h6v9"/></svg><span>Home</span></a>
       <a href="radar.html" class="nav-item active" aria-current="page"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg><span>Radar Map</span></a>
-      <a href="insights.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg><span>Insights</span></a>
+      <a href="insights.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg><span>Today</span></a>
+      <a href="compare.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 3H4a1 1 0 00-1 1v16a1 1 0 001 1h5V3z"/><path stroke-linecap="round" d="M15 3h5a1 1 0 011 1v16a1 1 0 01-1 1h-5V3z"/><path stroke-linecap="round" d="M9 12h6"/></svg><span>Compare</span></a>
       <a href="alerts.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span>Alerts</span><span class="nav-badge alerts-badge" style="display:none">0</span></a>
       <a href="settings.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span>Settings</span></a>
     </nav>
@@ -131,13 +171,30 @@
       </div>
 
       <!-- Layer tabs -->
-      <div class="layer-tabs" role="tablist">
-        <button class="layer-btn active" data-layer="rain"   role="tab">💧 Rain</button>
-        <button class="layer-btn"        data-layer="clouds" role="tab">☁️ Clouds</button>
-        <button class="layer-btn"        data-layer="wind"   role="tab">💨 Wind</button>
-        <button class="layer-btn"        data-layer="aqi"    role="tab">🌿 AQI</button>
-        <button class="layer-btn"        data-layer="temp"   role="tab">🌡️ Temperature</button>
+      <div class="layer-tabs" role="tablist" aria-label="Map layer">
+        <button class="layer-btn active" data-layer="rain" role="tab" aria-pressed="true">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 2v1M12 18.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5S13.38 18.5 12 18.5zM4.22 6.22l.71.71M19.07 6.22l-.71.71M1 13h2M21 13h2M4.22 19.78l.71-.71M19.07 19.78l-.71-.71M5.5 10a6.5 6.5 0 0113 0"/></svg>
+          Rain
+        </button>
+        <button class="layer-btn" data-layer="clouds" role="tab">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>
+          Clouds
+        </button>
+        <button class="layer-btn" data-layer="wind" role="tab">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9.59 4.59A2 2 0 1111 8H2m10.59 11.41A2 2 0 1014 16H2m15.73-8.27A2.5 2.5 0 1119.5 12H2"/></svg>
+          Wind
+        </button>
+        <button class="layer-btn" data-layer="aqi" role="tab">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg>
+          AQI
+        </button>
+        <button class="layer-btn" data-layer="temp" role="tab">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/></svg>
+          Temp
+        </button>
       </div>
+      <!-- Layer colour legend (populated by JS) -->
+      <div id="layer-legend-bar" aria-label="Layer legend"></div>
 
       <div class="radar-layout">
         <!-- Map + timeline (left/main column) -->
@@ -212,12 +269,13 @@
     </main>
 
     <!-- Bottom nav -->
-    <nav class="bottom-nav">
-      <a href="../index.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/></svg><span class="bn-label">Home</span></a>
-      <a href="radar.html" class="bottom-nav-item active"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49"/></svg><span class="bn-label">Radar</span></a>
-      <a href="insights.html" class="bottom-nav-item"><div class="bottom-nav-fab"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg></div><span class="bn-label" style="margin-top:4px">Insights</span></a>
-      <a href="alerts.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span class="bn-label">Alerts</span></a>
-      <a href="settings.html" class="bottom-nav-item"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="bn-label">Settings</span></a>
+        <nav class="bottom-nav" role="navigation" aria-label="Bottom navigation">
+      <a href="../index.html" class="bottom-nav-item" aria-label="Home"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/></svg><span class="bn-label">Home</span></a>
+      <a href="radar.html" class="bottom-nav-item active" aria-label="Radar"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49"/></svg><span class="bn-label">Radar</span></a>
+      <a href="insights.html" class="bottom-nav-item" aria-label="Today"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg><span class="bn-label">Today</span></a>
+      <a href="compare.html" class="bottom-nav-item" aria-label="Compare"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 3H4a1 1 0 00-1 1v16a1 1 0 001 1h5V3z"/><path stroke-linecap="round" d="M15 3h5a1 1 0 011 1v16a1 1 0 01-1 1h-5V3z"/><path stroke-linecap="round" d="M9 12h6"/></svg><span class="bn-label">Compare</span></a>
+      <a href="alerts.html" class="bottom-nav-item" aria-label="Alerts"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span class="bn-label">Alerts</span><span class="bn-badge alerts-badge" style="display:none">0</span></a>
+      <a href="settings.html" class="bottom-nav-item" aria-label="Settings"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="bn-label">Settings</span></a>
     </nav>
   </div>
 </div>
@@ -537,11 +595,12 @@
     extraMarkers = [];
   }
 
-  function addMarker(latlng, html, anchor) {
+  function addMarker(latlng, html, anchor, size) {
     var icon = L.divIcon({
       className:  '',
       html:       html,
       iconAnchor: anchor || [0, 0],
+      iconSize:   size   || null,
     });
     var m = L.marker(latlng, { icon: icon, interactive: false }).addTo(map);
     extraMarkers.push(m);
@@ -568,21 +627,24 @@
 
   // ── Rain layer (RainViewer tiles) ─────────────────────────────────
   function showRainLayer() {
+    // CRITICAL: always remove old tile before adding new one.
+    // showRainLayer is called twice: once immediately with null frame
+    // (coverage placeholder) and again when loadRainFrames() resolves.
+    // Without this removal the first tile is orphaned on the map and
+    // stays visible behind other layers as "Zoom Level Not Supported".
+    if (activeTileLayer) { map.removeLayer(activeTileLayer); activeTileLayer = null; }
+
     var frame = rainFrames[timelinePos];
-    var url;
 
-    if (!frame) {
-      // Frames not yet loaded — use static coverage placeholder
-      url = 'https://tilecache.rainviewer.com/v2/coverage/0/256/{z}/{x}/{y}/2/1_1.png';
-    } else if (frame.fallback) {
-      url = 'https://tilecache.rainviewer.com/v2/coverage/0/256/{z}/{x}/{y}/2/1_1.png';
-    } else {
-      // Real radar frame: colour scheme 4, smooth+snow options 1_1
-      url = 'https://' + rvHost + frame.path + '/256/{z}/{x}/{y}/4/1_1.png';
-    }
+    // If frames haven’t loaded yet or RainViewer is unreachable, skip
+    // the placeholder tile entirely (it shows "Zoom Level Not Supported"
+    // at city-level zoom). Real tiles arrive shortly via loadRainFrames().
+    if (!frame || frame.fallback) { return; }
 
+    // Real radar frame: colour scheme 4, smooth+snow options 1_1
+    var url = 'https://' + rvHost + frame.path + '/256/{z}/{x}/{y}/4/1_1.png';
     activeTileLayer = L.tileLayer(url, { opacity: 0.65, errorTileUrl: '' });
-    activeTileLayer.on('tileerror', function () {}); // suppress console noise
+    activeTileLayer.on('tileerror', function () {});
     activeTileLayer.addTo(map);
   }
 
@@ -611,7 +673,7 @@
              : cover < 85 ? 'Mostly cloudy'
              :               'Overcast';
 
-    addMarker([lat, lon], infoBadge(cover.toFixed(0) + '%', desc, '#64748b'), [40, 22]);
+    addMarker([lat, lon], infoBadge(cover.toFixed(0) + '%', desc, '#64748b'), [55, 29], [0, 0]);
   }
 
   // ── Wind layer (L.Circle + directional arrow badge) ───────────────
@@ -644,20 +706,34 @@
                  : speed < 50 ? 'Strong'
                  :               'Severe';
 
-    var html =
-      '<div style="text-align:center">' +
-        '<div style="background:rgba(0,0,0,.75);padding:10px 14px;border-radius:12px;' +
-             'box-shadow:0 2px 10px rgba(0,0,0,.55)">' +
-          '<svg width="44" height="44" viewBox="0 0 44 44" ' +
-               'style="display:block;margin:0 auto 5px;transform:rotate(' + arrowDeg + 'deg)">' +
-            '<polygon points="22,4 28,36 22,29 16,36" fill="' + color + '"/>' +
+    var windHtml =
+      '<div style="' +
+        'display:inline-block;' +
+        'background:rgba(10,16,28,0.90);' +
+        'border:1.5px solid rgba(255,255,255,0.14);' +
+        'border-top:2px solid ' + color + ';' +
+        'border-radius:12px;' +
+        'padding:9px 16px 8px;' +
+        'box-shadow:0 4px 18px rgba(0,0,0,0.6);' +
+        'text-align:center;' +
+        'white-space:nowrap;' +
+        'pointer-events:none;' +
+      '">' +
+        '<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px">' +
+          '<svg width="22" height="22" viewBox="0 0 22 22" style="flex-shrink:0;transform:rotate(' + arrowDeg + 'deg)">' +
+            '<polygon points="11,1 15,19 11,14 7,19" fill="' + color + '"/>' +
           '</svg>' +
-          '<div style="color:#fff;font-weight:800;font-size:14px;line-height:1.2">' + speed.toFixed(0) + ' km/h</div>' +
-          '<div style="color:rgba(255,255,255,.6);font-size:11px;margin-top:2px">' + compass + ' · ' + strength + '</div>' +
+          '<span style="color:#fff;font-weight:800;font-size:18px;line-height:1;letter-spacing:-0.3px">' +
+            speed.toFixed(0) + ' km/h' +
+          '</span>' +
+        '</div>' +
+        '<div style="color:rgba(255,255,255,0.60);font-size:11px;font-weight:500">' +
+          compass + ' &middot; ' + strength +
         '</div>' +
       '</div>';
 
-    addMarker([lat, lon], html, [56, 80]);
+    // iconSize [0,0] + iconAnchor centres the badge over the location dot
+    addMarker([lat, lon], windHtml, [75, 45], [0, 0]);
   }
 
   // ── AQI layer (L.Circle + AQI badge) ─────────────────────────────
@@ -686,7 +762,7 @@
               : aqi <= 200 ? 'Unhealthy'
               :               'Hazardous';
 
-    addMarker([lat, lon], infoBadge('AQI ' + Math.round(aqi), label, color), [46, 22]);
+    addMarker([lat, lon], infoBadge('AQI ' + Math.round(aqi), label, color), [55, 29], [0, 0]);
   }
 
   // ── Temperature layer (L.Circle + temp badge) ─────────────────────
@@ -714,16 +790,34 @@
              : temp < 33 ? 'Warm'
              :               'Hot';
 
-    addMarker([lat, lon], infoBadge(temp.toFixed(1) + '°C', feel, color), [46, 22]);
+    addMarker([lat, lon], infoBadge(temp.toFixed(1) + '°C', feel, color), [55, 29], [0, 0]);
   }
 
-  // ── Badge HTML helper ─────────────────────────────────────────────
+  // ── Badge HTML helper — compact pill readable on any map background ────
   function infoBadge(mainText, subText, color) {
-    return '<div style="background:rgba(0,0,0,.75);padding:8px 14px;border-radius:12px;' +
-           'box-shadow:0 2px 10px rgba(0,0,0,.5);text-align:center;white-space:nowrap">' +
-             '<div style="color:' + color + ';font-weight:800;font-size:15px;line-height:1.2">' + mainText + '</div>' +
-             '<div style="color:rgba(255,255,255,.65);font-size:11px;margin-top:2px">' + subText + '</div>' +
-           '</div>';
+    return '<div style="' +
+      'display:inline-block;' +
+      'background:rgba(10,16,28,0.90);' +
+      'border:1.5px solid rgba(255,255,255,0.14);' +
+      'border-top:2px solid ' + color + ';' +
+      'border-radius:12px;' +
+      'padding:8px 16px;' +
+      'min-width:80px;' +
+      'box-shadow:0 4px 18px rgba(0,0,0,0.6);' +
+      'text-align:center;' +
+      'white-space:nowrap;' +
+      'pointer-events:none;' +
+    '">' +
+      '<div style="' +
+        'color:' + color + ';' +
+        'font-weight:800;font-size:18px;line-height:1.1;' +
+        'letter-spacing:-0.3px;' +
+      '">' + mainText + '</div>' +
+      '<div style="' +
+        'color:rgba(255,255,255,0.60);' +
+        'font-size:11px;margin-top:3px;font-weight:500;' +
+      '">' + subText + '</div>' +
+    '</div>';
   }
 
   // ── AQI colour scale ─────────────────────────────────────────────

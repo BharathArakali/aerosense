@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#0d1117"/>
+  <title>Compare Cities – AeroSense</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link rel="manifest" href="../manifest.json"/>
+  <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png"/>
+  <link rel="shortcut icon" href="../assets/icon-192.png"/>
+  <script>(function(){try{var s=JSON.parse(localStorage.getItem("aerosense_settings")||"{}");var t=s.theme||"dark";if(t==="system"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}document.documentElement.setAttribute("data-theme",t);}catch(e){document.documentElement.setAttribute("data-theme","dark");}})();</script>
+  <link rel="stylesheet" href="../css/main.css"/>
+  <link rel="stylesheet" href="../css/dark.css"/>
+  <link rel="stylesheet" href="../css/light.css"/>
+  <link rel="stylesheet" href="../css/animations.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+</head>
+<body>
+
+<!-- Offline banner -->
+<div class="offline-banner" id="offline-banner">📡 Offline – Showing last available data</div>
+
+<div class="app-shell">
+
+  <!-- DESKTOP SIDEBAR -->
+  <aside class="sidebar" role="navigation" aria-label="Main navigation">
+    <div class="sidebar-logo">
+      <img class="logo-icon as-logo-img" src="../assets/icon-192.png" alt="AeroSense" width="32" height="32" style="border-radius:8px;object-fit:cover;flex-shrink:0;display:block;"/>
+      <span class="logo-text"><span class="logo-aero">Aero</span>Sense</span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="../index.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path stroke-linecap="round" d="M9 21V12h6v9"/></svg><span>Home</span></a>
+      <a href="radar.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg><span>Radar Map</span></a>
+      <a href="insights.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg><span>Today</span></a>
+      <a href="compare.html" class="nav-item active" aria-current="page"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 3H4a1 1 0 00-1 1v16a1 1 0 001 1h5V3z"/><path stroke-linecap="round" d="M15 3h5a1 1 0 011 1v16a1 1 0 01-1 1h-5V3z"/><path stroke-linecap="round" d="M9 12h6"/></svg><span>Compare</span></a>
+      <a href="alerts.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span>Alerts</span><span class="nav-badge alerts-badge" style="display:none">0</span></a>
+      <a href="settings.html" class="nav-item"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span>Settings</span></a>
+    </nav>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+
+    <!-- Desktop Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="sidebar-logo" style="border:none;padding:0">
+          <img class="as-logo-img" src="../assets/icon-192.png" alt="" width="28" height="28" style="border-radius:6px;object-fit:cover;flex-shrink:0;display:block;"/>
+          <span class="logo-text" style="font-size:var(--text-lg)"><span class="logo-aero">Aero</span>Sense</span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="topbar-btn topbar-theme-btn" aria-label="Toggle theme">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
+        <button class="topbar-btn" aria-label="Notifications" onclick="location.href='alerts.html'">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+          <span class="btn-badge alerts-badge" style="display:none">0</span>
+        </button>
+        <div class="avatar-btn" aria-label="Profile">B</div>
+      </div>
+    </header>
+
+    <!-- Mobile Topbar -->
+    <header class="mobile-topbar">
+      <div>
+        <div class="mt-logo"><img class="as-logo-img" src="../assets/icon-192.png" alt="" width="26" height="26" style="border-radius:6px;object-fit:cover;flex-shrink:0;vertical-align:middle;margin-right:6px;display:inline-block;"/><span class="logo-aero">Aero</span>Sense</div>
+        <div class="mt-location" style="font-size:var(--text-sm);font-weight:600;color:var(--text-primary)">Compare Cities</div>
+      </div>
+      <div class="mt-actions">
+        <button class="mt-btn topbar-theme-btn" aria-label="Toggle theme">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+        </button>
+        <button class="mt-btn" aria-label="Notifications" onclick="location.href='alerts.html'">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+          <span class="btn-badge alerts-badge" style="display:none">0</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- PAGE CONTENT -->
+    <main class="page-content page-enter" id="compare-page">
+
+      <!-- Page Header -->
+      <div class="page-header" style="margin-bottom:var(--space-2xl)">
+        <h1 class="section-title" style="font-size:var(--text-2xl);font-weight:800">Compare Cities</h1>
+        <p class="page-subtitle" style="margin-top:4px">Find the best conditions across any two locations</p>
+      </div>
+
+      <!-- CITY SELECTOR -->
+      <div class="card compare-selector-card" style="padding:var(--space-xl);margin-bottom:var(--space-2xl)">
+        <div class="compare-selector-row">
+
+          <!-- City A -->
+          <div class="compare-city-slot" id="slot-a">
+            <div class="ccs-label">City A</div>
+            <div class="ccs-input-wrap">
+              <svg class="ccs-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+              <input type="text" id="input-a" class="ccs-input" placeholder="Search city, e.g. Bangalore" autocomplete="off"/>
+              <button class="ccs-clear-btn" id="clear-a" style="display:none" aria-label="Clear">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="ccs-results" id="results-a" style="display:none"></div>
+            <div class="ccs-selected" id="selected-a" style="display:none">
+              <div class="ccs-sel-name" id="sel-name-a"></div>
+              <button class="ccs-change-btn" onclick="clearCity('a')">Change</button>
+            </div>
+          </div>
+
+          <!-- VS divider -->
+          <div class="compare-vs-divider">
+            <div class="cvd-circle">VS</div>
+          </div>
+
+          <!-- City B -->
+          <div class="compare-city-slot" id="slot-b">
+            <div class="ccs-label">City B</div>
+            <div class="ccs-input-wrap">
+              <svg class="ccs-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+              <input type="text" id="input-b" class="ccs-input" placeholder="Search city, e.g. Mysore" autocomplete="off"/>
+              <button class="ccs-clear-btn" id="clear-b" style="display:none" aria-label="Clear">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="ccs-results" id="results-b" style="display:none"></div>
+            <div class="ccs-selected" id="selected-b" style="display:none">
+              <div class="ccs-sel-name" id="sel-name-b"></div>
+              <button class="ccs-change-btn" onclick="clearCity('b')">Change</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Compare button -->
+        <div style="display:flex;justify-content:center;margin-top:var(--space-xl)">
+          <button class="compare-btn" id="btn-compare" disabled>
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 3H4a1 1 0 00-1 1v16a1 1 0 001 1h5V3z"/><path stroke-linecap="round" d="M15 3h5a1 1 0 011 1v16a1 1 0 01-1 1h-5V3z"/><path stroke-linecap="round" d="M9 12h6"/></svg>
+            Compare Now
+          </button>
+        </div>
+      </div>
+
+      <!-- RECENT COMPARISONS -->
+      <div id="recent-cmp-section" style="margin-bottom:var(--space-2xl);display:none">
+        <div class="section-title" style="font-size:var(--text-base);font-weight:700;margin-bottom:var(--space-lg)">Recent Comparisons</div>
+        <div class="recent-cmp-list" id="recent-cmp-list"></div>
+      </div>
+
+      <!-- QUICK COMPARE + FEATURES (hidden once results load) -->
+      <div id="cmp-empty-state">
+
+        <!-- Popular city pairs -->
+        <div style="margin-bottom:var(--space-2xl)">
+          <div class="section-title" style="font-size:var(--text-base);font-weight:700;margin-bottom:var(--space-md)">Popular Comparisons</div>
+          <div class="quick-cmp-grid" id="quick-cmp-grid">
+            <!-- India -->
+            <button class="quick-cmp-chip" data-a="Bengaluru" data-b="Mumbai">🌆 Bengaluru vs Mumbai</button>
+            <button class="quick-cmp-chip" data-a="Delhi" data-b="Mumbai">🏙️ Delhi vs Mumbai</button>
+            <button class="quick-cmp-chip" data-a="Chennai" data-b="Hyderabad">🌊 Chennai vs Hyderabad</button>
+            <button class="quick-cmp-chip" data-a="Pune" data-b="Bengaluru">🏔️ Pune vs Bengaluru</button>
+            <button class="quick-cmp-chip" data-a="Kolkata" data-b="Chennai">🎨 Kolkata vs Chennai</button>
+            <button class="quick-cmp-chip" data-a="Jaipur" data-b="Udaipur">🏜️ Jaipur vs Udaipur</button>
+            <button class="quick-cmp-chip" data-a="Kochi" data-b="Thiruvananthapuram">🌴 Kochi vs Trivandrum</button>
+            <button class="quick-cmp-chip" data-a="Mysuru" data-b="Bengaluru">🌸 Mysuru vs Bengaluru</button>
+            <!-- International -->
+            <button class="quick-cmp-chip" data-a="Mumbai" data-b="Dubai">✈️ Mumbai vs Dubai</button>
+            <button class="quick-cmp-chip" data-a="Bengaluru" data-b="Singapore">🌏 Bengaluru vs Singapore</button>
+            <button class="quick-cmp-chip" data-a="Delhi" data-b="London">🌍 Delhi vs London</button>
+            <button class="quick-cmp-chip" data-a="Mumbai" data-b="New York">🗽 Mumbai vs New York</button>
+          </div>
+        </div>
+
+        <!-- What you'll get -->
+        <div class="section-title" style="font-size:var(--text-base);font-weight:700;margin-bottom:var(--space-md)">What You'll Discover</div>
+        <div class="cmp-features-grid">
+          <div class="cmp-feature-card">
+            <div class="cmp-fc-icon">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+            <div class="cmp-fc-title">CityScore™</div>
+            <div class="cmp-fc-desc">Composite score across AQI, temperature, humidity, UV &amp; wind</div>
+          </div>
+          <div class="cmp-feature-card">
+            <div class="cmp-fc-icon">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3z"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg>
+            </div>
+            <div class="cmp-fc-title">Side-by-Side Metrics</div>
+            <div class="cmp-fc-desc">Temp, AQI, humidity, wind speed, UV index &amp; pressure compared directly</div>
+          </div>
+          <div class="cmp-feature-card">
+            <div class="cmp-fc-icon">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </div>
+            <div class="cmp-fc-title">Activity Scores</div>
+            <div class="cmp-fc-desc">Which city is better for running, cycling, picnics &amp; outdoor sports</div>
+          </div>
+          <div class="cmp-feature-card">
+            <div class="cmp-fc-icon">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div class="cmp-fc-title">7-Day Forecast</div>
+            <div class="cmp-fc-desc">Hourly and weekly forecast for both cities on the same view</div>
+          </div>
+          <div class="cmp-feature-card">
+            <div class="cmp-fc-icon">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49"/></svg>
+            </div>
+            <div class="cmp-fc-title">Live Radar Maps</div>
+            <div class="cmp-fc-desc">Interactive weather maps for both locations side by side</div>
+          </div>
+          <div class="cmp-feature-card">
+            <div class="cmp-fc-icon">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 8v4l3 3"/></svg>
+            </div>
+            <div class="cmp-fc-title">Travel Decision</div>
+            <div class="cmp-fc-desc">AI-powered recommendation on which city has better conditions right now</div>
+          </div>
+        </div>
+
+      </div><!-- /cmp-empty-state -->
+
+      <!-- LOADING STATE -->
+      <div id="cmp-loading" style="display:none;text-align:center;padding:var(--space-3xl)">
+        <div class="loading-spinner" style="margin:0 auto var(--space-lg)"></div>
+        <div class="page-subtitle">Fetching data for both cities…</div>
+      </div>
+
+      <!-- ===== RESULTS ===== -->
+      <div id="compare-results" style="display:none">
+
+        <!-- CITYSCORE OVERVIEW -->
+        <div class="card cmp-score-overview" style="padding:var(--space-xl);margin-bottom:var(--space-2xl)">
+          <div class="cmp-section-header">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <span>CityScore™ Overview</span>
+          </div>
+          <div class="cmp-score-row">
+            <div class="cmp-score-card" id="score-card-a">
+              <div class="csc-city-name" id="score-name-a">–</div>
+              <div class="csc-score" id="score-val-a">–</div>
+              <div class="csc-label" id="score-label-a">–</div>
+              <div class="csc-winner-tag" id="winner-tag-a" style="display:none">🏆 Overall Winner</div>
+            </div>
+            <div class="cmp-score-middle" id="score-middle">
+              <div class="csm-vs">VS</div>
+            </div>
+            <div class="cmp-score-card" id="score-card-b">
+              <div class="csc-city-name" id="score-name-b">–</div>
+              <div class="csc-score" id="score-val-b">–</div>
+              <div class="csc-label" id="score-label-b">–</div>
+              <div class="csc-winner-tag" id="winner-tag-b" style="display:none">🏆 Overall Winner</div>
+            </div>
+          </div>
+          <!-- Score breakdown bars -->
+          <div class="csc-breakdown" id="score-breakdown"></div>
+        </div>
+
+        <!-- TRAVEL DECISION CARD -->
+        <div class="card cmp-decision-card" id="decision-card" style="padding:var(--space-xl);margin-bottom:var(--space-2xl)">
+          <div class="cmp-section-header">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 8v4l3 3"/></svg>
+            <span>Travel Decision</span>
+          </div>
+          <div class="cdc-inner">
+            <div class="cdc-badge">Recommended</div>
+            <div class="cdc-city" id="decision-city">–</div>
+            <div class="cdc-reason" id="decision-reason">–</div>
+          </div>
+        </div>
+
+        <!-- METRIC COMPARISON TABLE -->
+        <div class="card" style="padding:var(--space-xl);margin-bottom:var(--space-2xl)">
+          <div class="cmp-section-header">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            <span>Metric Comparison</span>
+          </div>
+          <div class="cmp-table-header">
+            <span id="tbl-name-a" class="cth-city">City A</span>
+            <span class="cth-metric">Metric</span>
+            <span id="tbl-name-b" class="cth-city">City B</span>
+          </div>
+          <div id="metrics-table"></div>
+        </div>
+
+        <!-- CATEGORY WINNERS -->
+        <div class="card" style="padding:var(--space-xl);margin-bottom:var(--space-2xl)">
+          <div class="cmp-section-header">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M8 21h8M12 17v4M17 3H7L5.5 9c0 3.59 2.91 6.5 6.5 6.5S18.5 12.59 18.5 9L17 3z"/></svg>
+            <span>Category Winners</span>
+          </div>
+          <div class="category-winners-grid" id="category-winners"></div>
+        </div>
+
+        <!-- ACTIVITY COMPARISON -->
+        <div class="card" style="padding:var(--space-xl);margin-bottom:var(--space-2xl)">
+          <div class="cmp-section-header">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            <span>Activity Comparison</span>
+          </div>
+          <div class="activity-cmp-grid" id="activity-comparison"></div>
+        </div>
+
+        <!-- SMART RECOMMENDATIONS -->
+        <div class="card cmp-recs-card" id="smart-recs" style="padding:var(--space-xl);margin-bottom:var(--space-2xl)">
+          <div class="cmp-section-header">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>Smart Recommendations</span>
+          </div>
+          <div id="smart-recs-content"></div>
+        </div>
+
+        <!-- CHARTS -->
+        <div class="card" style="padding:var(--space-xl);margin-bottom:var(--space-2xl)">
+          <div class="cmp-section-header">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span>Visual Comparison</span>
+          </div>
+          <div class="cmp-chart-tabs">
+            <button class="cmp-chart-tab active" data-chart="radar" onclick="switchChart('radar')">Radar</button>
+            <button class="cmp-chart-tab" data-chart="bar" onclick="switchChart('bar')">Bar Chart</button>
+          </div>
+          <div class="cmp-chart-wrap">
+            <div id="chart-radar-wrap" style="position:relative;max-width:420px;margin:0 auto"><canvas id="chart-radar"></canvas></div>
+            <div id="chart-bar-wrap" style="display:none;position:relative;height:300px"><canvas id="chart-bar"></canvas></div>
+          </div>
+        </div>
+
+        <!-- FORECAST COMPARISON -->
+        <div class="card" style="padding:var(--space-xl);margin-bottom:var(--space-2xl)">
+          <div class="cmp-section-header">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>Forecast Comparison</span>
+          </div>
+          <div class="cmp-chart-tabs">
+            <button class="cmp-chart-tab active" data-fc="hourly" onclick="switchForecast('hourly')">24h</button>
+            <button class="cmp-chart-tab" data-fc="daily" onclick="switchForecast('daily')">7-Day</button>
+          </div>
+          <div id="forecast-cmp-content"></div>
+        </div>
+
+        <!-- RADAR MAPS -->
+        <div class="card" style="padding:var(--space-xl);margin-bottom:var(--space-2xl)">
+          <div class="cmp-section-header">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49"/></svg>
+            <span>Radar Maps</span>
+          </div>
+          <div class="cmp-maps-row">
+            <div class="cmp-map-slot">
+              <div class="cmp-map-label" id="map-label-a">City A</div>
+              <div class="cmp-map-box" id="map-a"></div>
+            </div>
+            <div class="cmp-map-slot">
+              <div class="cmp-map-label" id="map-label-b">City B</div>
+              <div class="cmp-map-box" id="map-b"></div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /compare-results -->
+
+    </main><!-- /page-content -->
+
+    <!-- Mobile Bottom Nav -->
+    <nav class="bottom-nav" role="navigation" aria-label="Bottom navigation">
+      <a href="../index.html" class="bottom-nav-item" aria-label="Home"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/></svg><span class="bn-label">Home</span></a>
+      <a href="radar.html" class="bottom-nav-item" aria-label="Radar"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49"/></svg><span class="bn-label">Radar</span></a>
+      <a href="insights.html" class="bottom-nav-item" aria-label="Today"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg><span class="bn-label">Today</span></a>
+      <a href="compare.html" class="bottom-nav-item active" aria-label="Compare"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M9 3H4a1 1 0 00-1 1v16a1 1 0 001 1h5V3z"/><path stroke-linecap="round" d="M15 3h5a1 1 0 011 1v16a1 1 0 01-1 1h-5V3z"/><path stroke-linecap="round" d="M9 12h6"/></svg><span class="bn-label">Compare</span></a>
+      <a href="alerts.html" class="bottom-nav-item" aria-label="Alerts"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg><span class="bn-label">Alerts</span><span class="bn-badge alerts-badge" style="display:none">0</span></a>
+      <a href="settings.html" class="bottom-nav-item" aria-label="Settings"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path stroke-linecap="round" d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="bn-label">Settings</span></a>
+    </nav>
+
+  </div><!-- /main-content -->
+</div><!-- /app-shell -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script type="module" src="../js/nav.js"></script>
+<script type="module" src="../js/compare.js"></script>
+</body>
+</html>

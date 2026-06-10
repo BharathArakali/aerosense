@@ -259,11 +259,58 @@ export function debounce(fn, ms) {
 }
 
 // ---- Geocoding (Open-Meteo Geocoding API) ----
+// City aliases: old/informal/anglicised names → official names in the geocoding DB
+const GEOCODE_ALIASES = {
+  // Karnataka
+  bangalore:'bengaluru',belgaum:'belagavi',bellary:'ballari',bijapur:'vijayapura',
+  gulbarga:'kalaburagi',shimoga:'shivamogga',tumkur:'tumakuru',
+  mangalore:'mangaluru',mysore:'mysuru',hubli:'hubballi',hospet:'hosapete',
+  ooty:'udhagamandalam',coorg:'madikeri',
+  // Kerala
+  cochin:'kochi',calicut:'kozhikode',trivandrum:'thiruvananthapuram',
+  trichur:'thrissur',alleppey:'alappuzha',quilon:'kollam',palghat:'palakkad',
+  cannanore:'kannur',pondicherry:'puducherry',
+  // Tamil Nadu
+  madras:'chennai',trichy:'tiruchirappalli',trichinopoly:'tiruchirappalli',
+  tanjore:'thanjavur',tuticorin:'thoothukudi',
+  // Maharashtra
+  bombay:'mumbai',poona:'pune',baroda:'vadodara',
+  aurangabad:'chhatrapati sambhajinagar',
+  // Andhra/Telangana
+  vizag:'visakhapatnam',rajamahendravaram:'rajahmundry',cuddapah:'kadapa',
+  // North India
+  allahabad:'prayagraj',benares:'varanasi',banaras:'varanasi',
+  cawnpore:'kanpur',delhi:'new delhi',gurgaon:'gurugram',
+  mussoorie:'mussoorie',simla:'shimla',dharamsala:'dharamshala',
+  faizabad:'ayodhya',
+  // East India
+  calcutta:'kolkata',gauhati:'guwahati',burdwan:'bardhaman',
+  berhampur:'brahmapur',balasore:'baleshwar',
+  // Goa
+  panjim:'panaji','vasco':'vasco da gama',
+  // International
+  peking:'beijing',rangoon:'yangon',saigon:'ho chi minh city',canton:'guangzhou',
+};
+
 export async function geocode(query) {
-  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`;
-  const res = await fetch(url);
-  const data = await res.json();
-  return data.results || [];
+  const raw = query.trim().toLowerCase();
+  const alias = GEOCODE_ALIASES[raw];
+  const terms = alias ? [query, alias] : [query];
+  const seen = new Set();
+  const all = [];
+  await Promise.all(terms.map(async t => {
+    try {
+      const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(t)}&count=10&language=en&format=json`;
+      const res = await fetch(url);
+      const data = await res.json();
+      for (const r of (data.results || [])) {
+        const key = `${Math.round(r.latitude*4)},${Math.round(r.longitude*4)}`;
+        if (!seen.has(key)) { seen.add(key); all.push(r); }
+      }
+    } catch {}
+  }));
+  all.sort((a,b) => (b.population||0) - (a.population||0));
+  return all.slice(0, 10);
 }
 
 export async function reverseGeocode(lat, lon) {
