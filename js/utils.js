@@ -259,13 +259,37 @@ export function debounce(fn, ms) {
 }
 
 // ---- Geocoding (Open-Meteo Geocoding API) ----
-// City aliases: old/informal names → official names used in the geocoding DB
+// City aliases: old/informal/anglicised names → official names in the geocoding DB
 const GEOCODE_ALIASES = {
-  bangalore:'bengaluru', bombay:'mumbai', calcutta:'kolkata', madras:'chennai',
-  poona:'pune', baroda:'vadodara', trivandrum:'thiruvananthapuram',
-  calicut:'kozhikode', cochin:'kochi', mysore:'mysuru', mangalore:'mangaluru',
-  hubli:'hubballi', ooty:'udhagamandalam', simla:'shimla',
-  peking:'beijing', rangoon:'yangon', saigon:'ho chi minh city', canton:'guangzhou',
+  // Karnataka
+  bangalore:'bengaluru',belgaum:'belagavi',bellary:'ballari',bijapur:'vijayapura',
+  gulbarga:'kalaburagi',shimoga:'shivamogga',tumkur:'tumakuru',
+  mangalore:'mangaluru',mysore:'mysuru',hubli:'hubballi',hospet:'hosapete',
+  ooty:'udhagamandalam',coorg:'madikeri',
+  // Kerala
+  cochin:'kochi',calicut:'kozhikode',trivandrum:'thiruvananthapuram',
+  trichur:'thrissur',alleppey:'alappuzha',quilon:'kollam',palghat:'palakkad',
+  cannanore:'kannur',pondicherry:'puducherry',
+  // Tamil Nadu
+  madras:'chennai',trichy:'tiruchirappalli',trichinopoly:'tiruchirappalli',
+  tanjore:'thanjavur',tuticorin:'thoothukudi',
+  // Maharashtra
+  bombay:'mumbai',poona:'pune',baroda:'vadodara',
+  aurangabad:'chhatrapati sambhajinagar',
+  // Andhra/Telangana
+  vizag:'visakhapatnam',rajamahendravaram:'rajahmundry',cuddapah:'kadapa',
+  // North India
+  allahabad:'prayagraj',benares:'varanasi',banaras:'varanasi',
+  cawnpore:'kanpur',delhi:'new delhi',gurgaon:'gurugram',
+  mussoorie:'mussoorie',simla:'shimla',dharamsala:'dharamshala',
+  faizabad:'ayodhya',
+  // East India
+  calcutta:'kolkata',gauhati:'guwahati',burdwan:'bardhaman',
+  berhampur:'brahmapur',balasore:'baleshwar',
+  // Goa
+  panjim:'panaji','vasco':'vasco da gama',
+  // International
+  peking:'beijing',rangoon:'yangon',saigon:'ho chi minh city',canton:'guangzhou',
 };
 
 export async function geocode(query) {

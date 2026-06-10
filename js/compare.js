@@ -47,13 +47,229 @@ function scoreLabel(s) {
 // ── Geocode ────────────────────────────────────────────────
 // Common alternate/old names → official API names
 const CITY_ALIASES = {
-  'bangalore': 'bengaluru', 'bombay': 'mumbai', 'calcutta': 'kolkata',
-  'madras': 'chennai', 'poona': 'pune', 'baroda': 'vadodara',
-  'trivandrum': 'thiruvananthapuram', 'calicut': 'kozhikode',
-  'cochin': 'kochi', 'mysore': 'mysuru', 'mangalore': 'mangaluru',
-  'hubli': 'hubballi', 'ooty': 'udhagamandalam', 'simla': 'shimla',
-  'peking': 'beijing', 'rangoon': 'yangon', 'saigon': 'ho chi minh city',
-  'bombay': 'mumbai', 'canton': 'guangzhou',
+  // ── Major renames (old colonial / anglicised → official) ──────────────────
+  'bangalore':     'bengaluru',    'bombay':        'mumbai',
+  'calcutta':      'kolkata',      'madras':        'chennai',
+  'poona':         'pune',         'baroda':        'vadodara',
+  'trivandrum':    'thiruvananthapuram',
+  'calicut':       'kozhikode',    'cochin':        'kochi',
+  'mysore':        'mysuru',       'mangalore':     'mangaluru',
+  'hubli':         'hubballi',     'ooty':          'udhagamandalam',
+  'simla':         'shimla',       'mussoorie':     'mussoorie',
+  'trichur':       'thrissur',     'pondicherry':   'puducherry',
+  'pondichery':    'puducherry',   'quilon':        'kollam',
+  'alleppey':      'alappuzha',    'trichur':       'thrissur',
+  'palghat':       'palakkad',     'cannanore':     'kannur',
+  'tellicherry':   'thalassery',   'badagara':      'vatakara',
+  'beypore':       'beypore',      'malappuram':    'malappuram',
+  'shoranur':      'shoranur',     'ottapalam':     'ottapalam',
+  // ── Karnataka extra ──────────────────────────────────────────────────────
+  'belgaum':       'belagavi',     'bellary':       'ballari',
+  'bijapur':       'vijayapura',   'gulbarga':      'kalaburagi',
+  'bidar':         'bidar',        'raichur':       'raichur',
+  'davangere':     'davangere',    'shimoga':       'shivamogga',
+  'tumkur':        'tumakuru',     'chitradurga':   'chitradurga',
+  'hassan':        'hassan',       'mandya':        'mandya',
+  'chikmagalur':   'chikkamagaluru','kodagu':       'madikeri',
+  'coorg':         'madikeri',     'madikeri':      'madikeri',
+  'udupi':         'udupi',        'kundapura':     'kundapura',
+  'dharwad':       'dharwad',      'gadag':         'gadag',
+  'hospet':        'hosapete',     'hampi':         'hosapete',
+  'bagalkot':      'bagalkot',     'koppal':        'koppal',
+  'yadgir':        'yadgiri',      'chamarajanagar':'chamarajanagara',
+  'kolar':         'kolar',        'chikballapur':  'chikkaballapura',
+  'ramanagara':    'ramanagara',   'ramnagara':     'ramanagara',
+  // ── Andhra Pradesh / Telangana ────────────────────────────────────────────
+  'hyderabad':     'hyderabad',    'secunderabad':  'hyderabad',
+  'visakhapatnam': 'visakhapatnam','vizag':         'visakhapatnam',
+  'vijayawada':    'vijayawada',   'guntur':        'guntur',
+  'tirupati':      'tirupati',     'nellore':       'nellore',
+  'kurnool':       'kurnool',      'rajahmundry':   'rajahmundry',
+  'rajamahendravaram':'rajahmundry','kakinada':     'kakinada',
+  'anantapur':     'anantapur',    'kadapa':        'kadapa',
+  'cuddapah':      'kadapa',       'nalgonda':      'nalgonda',
+  'warangal':      'warangal',     'khammam':       'khammam',
+  'nizamabad':     'nizamabad',    'karimnagar':    'karimnagar',
+  'mahbubnagar':   'mahbubnagar',  'adilabad':      'adilabad',
+  // ── Tamil Nadu ────────────────────────────────────────────────────────────
+  'coimbatore':    'coimbatore',   'trichy':        'tiruchirappalli',
+  'trichinopoly':  'tiruchirappalli','trichirappalli':'tiruchirappalli',
+  'madurai':       'madurai',      'salem':         'salem',
+  'tirunelveli':   'tirunelveli',  'erode':         'erode',
+  'vellore':       'vellore',      'thoothukudi':   'thoothukudi',
+  'tuticorin':     'thoothukudi',  'tiruppur':      'tiruppur',
+  'dindigul':      'dindigul',     'thanjavur':     'thanjavur',
+  'tanjore':       'thanjavur',    'cuddalore':     'cuddalore',
+  'kanchipuram':   'kanchipuram',  'tiruvannamalai':'tiruvannamalai',
+  'nagapattinam':  'nagapattinam', 'nagercoil':     'nagercoil',
+  'ramanathapuram':'ramanathapuram','sivaganga':    'sivaganga',
+  'virudhunagar':  'virudhunagar', 'krishnagiri':   'krishnagiri',
+  'dharmapuri':    'dharmapuri',   'viluppuram':    'viluppuram',
+  'perambalur':    'perambalur',   'ariyalur':      'ariyalur',
+  'namakkal':      'namakkal',     'karur':         'karur',
+  'tiruvarur':     'tiruvarur',    'pudukkottai':   'pudukkottai',
+  // ── Maharashtra ───────────────────────────────────────────────────────────
+  'nashik':        'nashik',       'aurangabad':    'chhatrapati sambhajinagar',
+  'sambhajinagar': 'chhatrapati sambhajinagar',
+  'solapur':       'solapur',      'amravati':      'amravati',
+  'nagpur':        'nagpur',       'kolhapur':      'kolhapur',
+  'satara':        'satara',       'sangli':        'sangli',
+  'jalgaon':       'jalgaon',      'akola':         'akola',
+  'latur':         'latur',        'nanded':        'nanded',
+  'osmanabad':     'dharashiv',    'chandrapur':    'chandrapur',
+  'gondiya':       'gondia',       'bhandara':      'bhandara',
+  'washim':        'washim',       'yavatmal':      'yavatmal',
+  'nandurbar':     'nandurbar',    'dhule':         'dhule',
+  'ahmednagar':    'ahmednagar',   'raigad':        'raigad',
+  'sindhudurg':    'sindhudurg',   'ratnagiri':     'ratnagiri',
+  'thane':         'thane',        'navi mumbai':   'navi mumbai',
+  'pune':          'pune',
+  // ── Gujarat ───────────────────────────────────────────────────────────────
+  'ahmedabad':     'ahmedabad',    'surat':         'surat',
+  'rajkot':        'rajkot',       'bhavnagar':     'bhavnagar',
+  'jamnagar':      'jamnagar',     'junagadh':      'junagadh',
+  'anand':         'anand',        'gandhinagar':   'gandhinagar',
+  'nadiad':        'nadiad',       'bharuch':       'bharuch',
+  'broach':        'bharuch',      'navsari':       'navsari',
+  'valsad':        'valsad',       'amreli':        'amreli',
+  'botad':         'botad',        'morbi':         'morbi',
+  'surendranagar': 'surendranagar','dahod':         'dahod',
+  'panchmahal':    'godhra',       'godhra':        'godhra',
+  'kheda':         'kheda',        'mehsana':       'mehsana',
+  'banaskantha':   'palanpur',     'palanpur':      'palanpur',
+  'patan':         'patan',        'sabarkantha':   'himmatnagar',
+  'himmatnagar':   'himmatnagar',  'kutch':         'bhuj',
+  'bhuj':          'bhuj',         'gandhidham':    'gandhidham',
+  // ── Rajasthan ─────────────────────────────────────────────────────────────
+  'jaipur':        'jaipur',       'jodhpur':       'jodhpur',
+  'udaipur':       'udaipur',      'kota':          'kota',
+  'bikaner':       'bikaner',      'ajmer':         'ajmer',
+  'alwar':         'alwar',        'bharatpur':     'bharatpur',
+  'sikar':         'sikar',        'jhunjhunu':     'jhunjhunu',
+  'churu':         'churu',        'nagaur':        'nagaur',
+  'pali':          'pali',         'barmer':        'barmer',
+  'jaisalmer':     'jaisalmer',    'sirohi':        'sirohi',
+  'dungarpur':     'dungarpur',    'banswara':      'banswara',
+  'chittorgarh':   'chittorgarh',  'bhilwara':      'bhilwara',
+  'bundi':         'bundi',        'sawai madhopur':'sawai madhopur',
+  'tonk':          'tonk',         'baran':         'baran',
+  'dholpur':       'dholpur',      'karauli':       'karauli',
+  // ── Madhya Pradesh ───────────────────────────────────────────────────────
+  'bhopal':        'bhopal',       'indore':        'indore',
+  'gwalior':       'gwalior',      'jabalpur':      'jabalpur',
+  'ujjain':        'ujjain',       'sagar':         'sagar',
+  'rewa':          'rewa',         'satna':         'satna',
+  'ratlam':        'ratlam',       'dewas':         'dewas',
+  'shivpuri':      'shivpuri',     'morena':        'morena',
+  'bhind':         'bhind',        'damoh':         'damoh',
+  'chhindwara':    'chhindwara',   'vidisha':       'vidisha',
+  'khargone':      'khargone',     'hoshangabad':   'narmadapuram',
+  'narmadapuram':  'narmadapuram', 'mandla':        'mandla',
+  'balaghat':      'balaghat',     'seoni':         'seoni',
+  'shahdol':       'shahdol',      'umaria':        'umaria',
+  'katni':         'katni',        'sidhi':         'sidhi',
+  'neemuch':       'neemuch',      'mandsaur':      'mandsaur',
+  // ── Uttar Pradesh ────────────────────────────────────────────────────────
+  'lucknow':       'lucknow',      'kanpur':        'kanpur',
+  'cawnpore':      'kanpur',       'agra':          'agra',
+  'varanasi':      'varanasi',     'benares':       'varanasi',
+  'banaras':       'varanasi',     'allahabad':     'prayagraj',
+  'prayagraj':     'prayagraj',    'meerut':        'meerut',
+  'ghaziabad':     'ghaziabad',    'noida':         'noida',
+  'bareilly':      'bareilly',     'aligarh':       'aligarh',
+  'moradabad':     'moradabad',    'gorakhpur':     'gorakhpur',
+  'firozabad':     'firozabad',    'jhansi':        'jhansi',
+  'mathura':       'mathura',      'vrindavan':     'mathura',
+  'muzaffarnagar': 'muzaffarnagar','shahjahanpur':  'shahjahanpur',
+  'rampur':        'rampur',       'hapur':         'hapur',
+  'sitapur':       'sitapur',      'lakhimpur':     'lakhimpur',
+  'ayodhya':       'ayodhya',      'faizabad':      'ayodhya',
+  'sultanpur':     'sultanpur',    'rae bareli':    'rae bareli',
+  'fatehpur':      'fatehpur',     'unnao':         'unnao',
+  'hardoi':        'hardoi',       'deoria':        'deoria',
+  'azamgarh':      'azamgarh',     'mau':           'mau',
+  'ballia':        'ballia',       'basti':         'basti',
+  'ambedkar nagar':'ambedkar nagar','jaunpur':      'jaunpur',
+  'mirzapur':      'mirzapur',     'sonbhadra':     'sonbhadra',
+  'chandauli':     'chandauli',    'ghazipur':      'ghazipur',
+  // ── Delhi & NCR ──────────────────────────────────────────────────────────
+  'delhi':         'new delhi',    'new delhi':     'new delhi',
+  'gurgaon':       'gurugram',     'gurugram':      'gurugram',
+  'faridabad':     'faridabad',    'noida':         'noida',
+  'greater noida': 'greater noida','dwarka':        'new delhi',
+  // ── Punjab & Haryana ─────────────────────────────────────────────────────
+  'chandigarh':    'chandigarh',   'amritsar':      'amritsar',
+  'ludhiana':      'ludhiana',     'jalandhar':     'jalandhar',
+  'patiala':       'patiala',      'bathinda':      'bathinda',
+  'mohali':        'mohali',       'pathankot':     'pathankot',
+  'hoshiarpur':    'hoshiarpur',   'ferozepur':     'ferozepur',
+  'rohtak':        'rohtak',       'panipat':       'panipat',
+  'karnal':        'karnal',       'hisar':         'hisar',
+  'sonipat':       'sonipat',      'ambala':        'ambala',
+  'yamunanagar':   'yamunanagar',  'sirsa':         'sirsa',
+  'kurukshetra':   'kurukshetra',  'rewari':        'rewari',
+  'palwal':        'palwal',       'jhajjar':       'jhajjar',
+  // ── Himachal Pradesh & Uttarakhand ───────────────────────────────────────
+  'shimla':        'shimla',       'dharamsala':    'dharamshala',
+  'manali':        'manali',       'kullu':         'kullu',
+  'mandi':         'mandi',        'bilaspur':      'bilaspur',
+  'dehradun':      'dehradun',     'haridwar':      'haridwar',
+  'rishikesh':     'rishikesh',    'nainital':      'nainital',
+  'almora':        'almora',       'haldwani':      'haldwani',
+  'rudrapur':      'rudrapur',     'kashipur':      'kashipur',
+  'roorkee':       'roorkee',      'kotdwar':       'kotdwar',
+  'tehri':         'tehri garhwal','uttarkashi':    'uttarkashi',
+  'pithoragarh':   'pithoragarh',  'bageshwar':     'bageshwar',
+  // ── Bihar & Jharkhand ────────────────────────────────────────────────────
+  'patna':         'patna',        'gaya':          'gaya',
+  'muzaffarpur':   'muzaffarpur',  'bhagalpur':     'bhagalpur',
+  'darbhanga':     'darbhanga',    'arrah':         'arrah',
+  'buxar':         'buxar',        'sasaram':       'sasaram',
+  'begusarai':     'begusarai',    'munger':        'munger',
+  'samastipur':    'samastipur',   'purnia':        'purnia',
+  'katihar':       'katihar',      'nalanda':       'nalanda',
+  'ranchi':        'ranchi',       'jamshedpur':    'jamshedpur',
+  'dhanbad':       'dhanbad',      'bokaro':        'bokaro',
+  'deoghar':       'deoghar',      'hazaribagh':    'hazaribagh',
+  'giridih':       'giridih',      'ramgarh':       'ramgarh',
+  // ── West Bengal & Odisha ─────────────────────────────────────────────────
+  'kolkata':       'kolkata',      'howrah':        'howrah',
+  'siliguri':      'siliguri',     'darjeeling':    'darjeeling',
+  'asansol':       'asansol',      'durgapur':      'durgapur',
+  'burdwan':       'bardhaman',    'bardhaman':     'bardhaman',
+  'haldia':        'haldia',       'kharagpur':     'kharagpur',
+  'bhubaneswar':   'bhubaneswar',  'cuttack':       'cuttack',
+  'rourkela':      'rourkela',     'berhampur':     'brahmapur',
+  'brahmapur':     'brahmapur',    'balasore':      'baleshwar',
+  'puri':          'puri',         'sambalpur':     'sambalpur',
+  'koraput':       'koraput',
+  // ── North-East India ─────────────────────────────────────────────────────
+  'guwahati':      'guwahati',     'gauhati':       'guwahati',
+  'dibrugarh':     'dibrugarh',    'jorhat':        'jorhat',
+  'silchar':       'silchar',      'tezpur':        'tezpur',
+  'shillong':      'shillong',     'aizawl':        'aizawl',
+  'imphal':        'imphal',       'agartala':      'agartala',
+  'kohima':        'kohima',       'gangtok':       'gangtok',
+  'itanagar':      'itanagar',     'dispur':        'guwahati',
+  // ── Goa ──────────────────────────────────────────────────────────────────
+  'panaji':        'panaji',       'panjim':        'panaji',
+  'margao':        'margao',       'vasco':         'vasco da gama',
+  'vasco da gama': 'vasco da gama','mapusa':        'mapusa',
+  'ponda':         'ponda',
+  // ── Chhattisgarh ─────────────────────────────────────────────────────────
+  'raipur':        'raipur',       'bhilai':        'bhilai',
+  'bilaspur':      'bilaspur',     'korba':         'korba',
+  'durg':          'durg',         'raigarh':       'raigarh',
+  'jagdalpur':     'jagdalpur',    'ambikapur':     'ambikapur',
+  // ── J&K, Ladakh, HP hills ────────────────────────────────────────────────
+  'srinagar':      'srinagar',     'jammu':         'jammu',
+  'leh':           'leh',          'kargil':        'kargil',
+  'sopore':        'sopore',       'anantnag':      'anantnag',
+  'baramulla':     'baramulla',    'kathua':        'kathua',
+  // ── International ────────────────────────────────────────────────────────
+  'peking':        'beijing',      'rangoon':       'yangon',
+  'saigon':        'ho chi minh city', 'canton':    'guangzhou',
+  'bombay':        'mumbai',
 };
 
 function countryFlagEmoji(cc) {
@@ -274,6 +490,9 @@ async function runCompare() {
   if (!state.cityA || !state.cityB) return;
   el('cmp-loading').style.display = '';
   el('compare-results').style.display = 'none';
+  // Hide empty state (popular pairs + feature cards) once a comparison runs
+  const emptyState = el('cmp-empty-state');
+  if (emptyState) emptyState.style.display = 'none';
 
   try {
     const [wA, wB, aA, aB] = await Promise.all([
@@ -292,6 +511,7 @@ async function runCompare() {
     el('compare-results').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (e) {
     el('cmp-loading').style.display = 'none';
+    if (emptyState) emptyState.style.display = '';
     console.error('Compare failed:', e);
   }
 }
@@ -760,14 +980,34 @@ function renderHistory() {
   });
 }
 
-// ── Init ───────────────────────────────────────────────────
+// ── Quick-compare chips ────────────────────────────────────
+async function quickCompare(nameA, nameB) {
+  // Geocode both city names and populate the slots
+  const [resA, resB] = await Promise.all([geocode(nameA), geocode(nameB)]);
+  if (!resA.length || !resB.length) return;
+  const cityA = { lat: resA[0].latitude, lon: resA[0].longitude,
+                  name: [resA[0].name, resA[0].country].filter(Boolean).join(', ') };
+  const cityB = { lat: resB[0].latitude, lon: resB[0].longitude,
+                  name: [resB[0].name, resB[0].country].filter(Boolean).join(', ') };
+  selectCity('a', cityA);
+  selectCity('b', cityB);
+  setTimeout(runCompare, 80);
+}
+
+function setupQuickChips() {
+  document.querySelectorAll('.quick-cmp-chip').forEach(btn => {
+    btn.addEventListener('click', () => quickCompare(btn.dataset.a, btn.dataset.b));
+  });
+}
+
+// ── Init ─────────────────────────────────────────────────────────
 function init() {
   setupSearch('a');
   setupSearch('b');
   el('btn-compare').addEventListener('click', runCompare);
+  setupQuickChips();
   renderHistory();
 
-  // Offline detection
   const banner = el('offline-banner');
   window.addEventListener('offline', () => banner?.classList.add('show'));
   window.addEventListener('online',  () => banner?.classList.remove('show'));

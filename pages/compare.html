@@ -56,6 +56,11 @@
         <button class="topbar-btn topbar-theme-btn" aria-label="Toggle theme">
           <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
         </button>
+        <button class="topbar-btn" aria-label="Notifications" onclick="location.href='alerts.html'">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+          <span class="btn-badge alerts-badge" style="display:none">0</span>
+        </button>
+        <div class="avatar-btn" aria-label="Profile">B</div>
       </div>
     </header>
 
@@ -68,6 +73,10 @@
       <div class="mt-actions">
         <button class="mt-btn topbar-theme-btn" aria-label="Toggle theme">
           <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+        </button>
+        <button class="mt-btn" aria-label="Notifications" onclick="location.href='alerts.html'">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M15 17H20L18.595 15.595A1 1 0 0118 14.808V11a6 6 0 10-12 0v3.808a1 1 0 01-.595.797L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+          <span class="btn-badge alerts-badge" style="display:none">0</span>
         </button>
       </div>
     </header>
@@ -140,6 +149,79 @@
         <div class="section-title" style="font-size:var(--text-base);font-weight:700;margin-bottom:var(--space-lg)">Recent Comparisons</div>
         <div class="recent-cmp-list" id="recent-cmp-list"></div>
       </div>
+
+      <!-- QUICK COMPARE + FEATURES (hidden once results load) -->
+      <div id="cmp-empty-state">
+
+        <!-- Popular city pairs -->
+        <div style="margin-bottom:var(--space-2xl)">
+          <div class="section-title" style="font-size:var(--text-base);font-weight:700;margin-bottom:var(--space-md)">Popular Comparisons</div>
+          <div class="quick-cmp-grid" id="quick-cmp-grid">
+            <!-- India -->
+            <button class="quick-cmp-chip" data-a="Bengaluru" data-b="Mumbai">🌆 Bengaluru vs Mumbai</button>
+            <button class="quick-cmp-chip" data-a="Delhi" data-b="Mumbai">🏙️ Delhi vs Mumbai</button>
+            <button class="quick-cmp-chip" data-a="Chennai" data-b="Hyderabad">🌊 Chennai vs Hyderabad</button>
+            <button class="quick-cmp-chip" data-a="Pune" data-b="Bengaluru">🏔️ Pune vs Bengaluru</button>
+            <button class="quick-cmp-chip" data-a="Kolkata" data-b="Chennai">🎨 Kolkata vs Chennai</button>
+            <button class="quick-cmp-chip" data-a="Jaipur" data-b="Udaipur">🏜️ Jaipur vs Udaipur</button>
+            <button class="quick-cmp-chip" data-a="Kochi" data-b="Thiruvananthapuram">🌴 Kochi vs Trivandrum</button>
+            <button class="quick-cmp-chip" data-a="Mysuru" data-b="Bengaluru">🌸 Mysuru vs Bengaluru</button>
+            <!-- International -->
+            <button class="quick-cmp-chip" data-a="Mumbai" data-b="Dubai">✈️ Mumbai vs Dubai</button>
+            <button class="quick-cmp-chip" data-a="Bengaluru" data-b="Singapore">🌏 Bengaluru vs Singapore</button>
+            <button class="quick-cmp-chip" data-a="Delhi" data-b="London">🌍 Delhi vs London</button>
+            <button class="quick-cmp-chip" data-a="Mumbai" data-b="New York">🗽 Mumbai vs New York</button>
+          </div>
+        </div>
+
+        <!-- What you'll get -->
+        <div class="section-title" style="font-size:var(--text-base);font-weight:700;margin-bottom:var(--space-md)">What You'll Discover</div>
+        <div class="cmp-features-grid">
+          <div class="cmp-feature-card">
+            <div class="cmp-fc-icon">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            </div>
+            <div class="cmp-fc-title">CityScore™</div>
+            <div class="cmp-fc-desc">Composite score across AQI, temperature, humidity, UV &amp; wind</div>
+          </div>
+          <div class="cmp-feature-card">
+            <div class="cmp-fc-icon">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3z"/><path stroke-linecap="round" d="M14 17.5h7M17.5 14v7"/></svg>
+            </div>
+            <div class="cmp-fc-title">Side-by-Side Metrics</div>
+            <div class="cmp-fc-desc">Temp, AQI, humidity, wind speed, UV index &amp; pressure compared directly</div>
+          </div>
+          <div class="cmp-feature-card">
+            <div class="cmp-fc-icon">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </div>
+            <div class="cmp-fc-title">Activity Scores</div>
+            <div class="cmp-fc-desc">Which city is better for running, cycling, picnics &amp; outdoor sports</div>
+          </div>
+          <div class="cmp-feature-card">
+            <div class="cmp-fc-icon">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div class="cmp-fc-title">7-Day Forecast</div>
+            <div class="cmp-fc-desc">Hourly and weekly forecast for both cities on the same view</div>
+          </div>
+          <div class="cmp-feature-card">
+            <div class="cmp-fc-icon">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path stroke-linecap="round" d="M16.24 7.76a6 6 0 010 8.49M7.76 7.76a6 6 0 000 8.49"/></svg>
+            </div>
+            <div class="cmp-fc-title">Live Radar Maps</div>
+            <div class="cmp-fc-desc">Interactive weather maps for both locations side by side</div>
+          </div>
+          <div class="cmp-feature-card">
+            <div class="cmp-fc-icon">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 8v4l3 3"/></svg>
+            </div>
+            <div class="cmp-fc-title">Travel Decision</div>
+            <div class="cmp-fc-desc">AI-powered recommendation on which city has better conditions right now</div>
+          </div>
+        </div>
+
+      </div><!-- /cmp-empty-state -->
 
       <!-- LOADING STATE -->
       <div id="cmp-loading" style="display:none;text-align:center;padding:var(--space-3xl)">
