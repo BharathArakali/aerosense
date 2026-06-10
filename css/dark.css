@@ -309,12 +309,57 @@ body {
 .theme-toggle-btn:not(.active) { color: #8DA3C4; }
 
 /* ── Compare Page (dark) ── */
-.cmp-score-card         { background: rgba(13,26,48,0.65); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
-.cmp-score-card.winner  { border-color: rgba(59,130,246,.60); box-shadow: 0 0 0 4px rgba(59,130,246,.10), 0 8px 32px rgba(59,130,246,.20); }
-.cmp-decision-card      { background: rgba(34,197,94,.07); border: 1px solid rgba(34,197,94,.20); }
-.cw-item                { background: rgba(13,26,48,0.65); border-color: rgba(255,255,255,.06); }
-.ccs-results            { background: rgba(8,16,34,0.96); border-color: rgba(255,255,255,.08); }
-.ccs-result-item:hover  { background: rgba(59,130,246,.10); }
-.ccs-input-wrap         { background: rgba(18,32,64,.80); border-color: rgba(255,255,255,.08); }
-.recent-cmp-item        { background: rgba(13,26,48,0.60); border-color: rgba(255,255,255,.06); }
-.recent-cmp-item:hover  { border-color: rgba(59,130,246,.50); background: rgba(59,130,246,.08); }
+[data-theme="dark"] .cmp-score-card,
+:root .cmp-score-card {
+  background: rgba(13,26,48,0.72);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1.5px solid rgba(255,255,255,.07);
+}
+[data-theme="dark"] .cmp-score-card.winner,
+:root .cmp-score-card.winner {
+  border-color: rgba(59,130,246,.60);
+  box-shadow: 0 0 0 4px rgba(59,130,246,.10), 0 8px 32px rgba(59,130,246,.20);
+}
+[data-theme="dark"] .cmp-decision-card,
+:root .cmp-decision-card {
+  background: rgba(34,197,94,.07);
+  border: 1px solid rgba(34,197,94,.20);
+}
+[data-theme="dark"] .cw-item,
+:root .cw-item {
+  background: rgba(13,26,48,0.65);
+  border-color: rgba(255,255,255,.06);
+}
+[data-theme="dark"] .ccs-results,
+:root .ccs-results {
+  background: rgba(8,16,34,0.97);
+  border-color: rgba(255,255,255,.09);
+}
+[data-theme="dark"] .ccs-result-item:hover,
+:root .ccs-result-item:hover {
+  background: rgba(59,130,246,.10);
+}
+[data-theme="dark"] .ccs-input-wrap,
+:root .ccs-input-wrap {
+  background: rgba(18,32,64,.80);
+  border-color: rgba(255,255,255,.08);
+}
+[data-theme="dark"] .recent-cmp-item,
+:root .recent-cmp-item {
+  background: rgba(13,26,48,0.60);
+  border-color: rgba(255,255,255,.06);
+}
+[data-theme="dark"] .recent-cmp-item:hover,
+:root .recent-cmp-item:hover {
+  border-color: rgba(59,130,246,.50);
+  background: rgba(59,130,246,.08);
+}
+[data-theme="dark"] .cmp-chart-tab,
+:root .cmp-chart-tab {
+  background: rgba(13,26,48,.65);
+  border-color: rgba(255,255,255,.08);
+  color: var(--text-secondary);
+}
+[data-theme="dark"] .ccri-flag,
+:root .ccri-flag { color: var(--text-primary); }

@@ -45,13 +45,52 @@ function scoreLabel(s) {
 }
 
 // ── Geocode ────────────────────────────────────────────────
-async function geocode(q) {
+// Common alternate/old names → official API names
+const CITY_ALIASES = {
+  'bangalore': 'bengaluru', 'bombay': 'mumbai', 'calcutta': 'kolkata',
+  'madras': 'chennai', 'poona': 'pune', 'baroda': 'vadodara',
+  'trivandrum': 'thiruvananthapuram', 'calicut': 'kozhikode',
+  'cochin': 'kochi', 'mysore': 'mysuru', 'mangalore': 'mangaluru',
+  'hubli': 'hubballi', 'ooty': 'udhagamandalam', 'simla': 'shimla',
+  'peking': 'beijing', 'rangoon': 'yangon', 'saigon': 'ho chi minh city',
+  'bombay': 'mumbai', 'canton': 'guangzhou',
+};
+
+function countryFlagEmoji(cc) {
+  if (!cc || cc.length !== 2) return '';
+  const base = 0x1F1E6 - 65;
+  return String.fromCodePoint(base + cc.toUpperCase().charCodeAt(0)) +
+         String.fromCodePoint(base + cc.toUpperCase().charCodeAt(1));
+}
+
+async function fetchGeocode(term) {
   try {
-    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=en&format=json`;
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(term)}&count=10&language=en&format=json`;
     const r = await fetch(url);
     const d = await r.json();
     return d.results || [];
   } catch { return []; }
+}
+
+async function geocode(q) {
+  const raw = q.trim().toLowerCase();
+  const alias = CITY_ALIASES[raw];
+
+  // Run searches in parallel: original query + alias (if different)
+  const searches = alias ? [q, alias] : [q];
+  const batches = await Promise.all(searches.map(fetchGeocode));
+
+  // Merge, deduplicate by lat/lon grid cell, sort by population desc
+  const seen = new Set();
+  const merged = [];
+  for (const batch of batches) {
+    for (const r of batch) {
+      const key = `${Math.round(r.latitude * 2)},${Math.round(r.longitude * 2)}`;
+      if (!seen.has(key)) { seen.add(key); merged.push(r); }
+    }
+  }
+  merged.sort((a, b) => (b.population || 0) - (a.population || 0));
+  return merged.slice(0, 8);
 }
 
 // ── CityScore™ calculation ─────────────────────────────────
@@ -148,10 +187,17 @@ function setupSearch(slot) {
       return;
     }
     res.innerHTML = results.map((r, i) => {
-      const sub = [r.admin1, r.country].filter(Boolean).join(', ');
-      return `<div class="ccs-result-item" data-idx="${i}" data-lat="${r.latitude}" data-lon="${r.longitude}" data-name="${(r.name + (r.admin1 ? ', ' + r.admin1 : '') + ', ' + r.country).replace(/"/g,'&quot;')}">
-        <div class="ccri-name">${r.name}</div>
-        <div class="ccri-sub">${sub}</div>
+      const flag = countryFlagEmoji(r.country_code);
+      const parts = [r.admin1, r.country].filter(Boolean);
+      const sub = parts.join(' · ');
+      const pop = r.population ? (r.population >= 1e6 ? (r.population/1e6).toFixed(1)+'M' : (r.population/1e3).toFixed(0)+'K') : '';
+      const fullName = [r.name, r.admin1, r.country].filter(Boolean).join(', ');
+      return `<div class="ccs-result-item" data-idx="${i}" data-lat="${r.latitude}" data-lon="${r.longitude}" data-name="${fullName.replace(/"/g,'&quot;')}">
+        <div class="ccri-flag">${flag}</div>
+        <div class="ccri-info">
+          <div class="ccri-name">${r.name}</div>
+          <div class="ccri-sub">${sub}${pop ? ' <span class="ccri-pop">'+pop+'</span>' : ''}</div>
+        </div>
       </div>`;
     }).join('');
     res.querySelectorAll('.ccs-result-item').forEach(item => {

@@ -2460,3 +2460,20 @@ input, select, textarea { font-family: inherit; }
   transition: all var(--transition-fast);
 }
 .recent-cmp-item:hover { border-color: var(--color-brand); color: var(--text-primary); }
+
+/* ── Compare search result item (flag + info layout) ── */
+.ccs-result-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+.ccri-flag {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  width: 28px;
+  text-align: center;
+}
+.ccri-info { flex: 1; min-width: 0; }
+.ccri-name { font-size: var(--text-sm); font-weight: 600; color: var(--text-primary); }
+.ccri-sub  { font-size: var(--text-xs); color: var(--text-tertiary); margin-top: 2px; }
+.ccri-pop  { font-weight: 700; color: var(--color-brand); margin-left: 4px; }
