@@ -22,7 +22,7 @@ export async function fetchWeather(lat, lon) {
       'relative_humidity_2m',
       'wind_speed_10m',
       'wind_direction_10m',
-      'surface_pressure',
+      'pressure_msl',
       'visibility',
       'uv_index',
       'is_day',
@@ -72,7 +72,7 @@ function parseWeather(raw) {
     humidity: c.relative_humidity_2m,
     windSpeed: Math.round(c.wind_speed_10m),
     windDir: c.wind_direction_10m,
-    pressure: Math.round(c.surface_pressure),
+    pressure: Math.round(c.pressure_msl),
     visibility: +(c.visibility / 1000).toFixed(1), // convert m → km
     uvIndex: Math.round(c.uv_index),
     isDay: c.is_day,

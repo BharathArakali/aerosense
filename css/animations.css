@@ -228,6 +228,106 @@
   to { transform: scale(4); opacity: 0; }
 }
 
+/* ============================================================
+   Phase 3 — Micro-interactions (P3-G)
+   ============================================================ */
+
+/* ---------- Skeleton helpers (zero-dashes policy) ---------- */
+.skeleton-text {
+  display: inline-block;
+  width: 3.5em;
+  height: 1em;
+  border-radius: var(--radius-sm);
+  vertical-align: middle;
+}
+.skeleton-text-sm { width: 2.2em; height: 0.85em; }
+.skeleton-text-lg { width: 5em; height: 1.2em; }
+.skeleton-block {
+  width: 100%;
+  height: 120px;
+  border-radius: var(--radius-lg);
+}
+
+/* ---------- Value fade-in when data replaces a skeleton ---------- */
+@keyframes value-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.value-in { animation: value-in 0.3s ease-out both; }
+
+/* ---------- Card stagger on page load ---------- */
+@keyframes card-stagger {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stagger-in > * {
+  animation: card-stagger 0.4s ease-out both;
+}
+.stagger-in > *:nth-child(1)  { animation-delay: 0ms; }
+.stagger-in > *:nth-child(2)  { animation-delay: 50ms; }
+.stagger-in > *:nth-child(3)  { animation-delay: 100ms; }
+.stagger-in > *:nth-child(4)  { animation-delay: 150ms; }
+.stagger-in > *:nth-child(5)  { animation-delay: 200ms; }
+.stagger-in > *:nth-child(6)  { animation-delay: 250ms; }
+.stagger-in > *:nth-child(7)  { animation-delay: 300ms; }
+.stagger-in > *:nth-child(8)  { animation-delay: 350ms; }
+.stagger-in > *:nth-child(n+9){ animation-delay: 400ms; }
+
+/* ---------- Page fade on navigation ---------- */
+@keyframes page-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.page-fade { animation: page-fade-in 0.2s ease-out both; }
+
+/* ---------- AeroScore gauge arc ---------- */
+.aero-gauge-fill {
+  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ---------- AQI needle ---------- */
+.aqi-needle {
+  transition: left 0.7s ease-out;
+}
+
+/* ---------- Factor bar fill ---------- */
+.factor-bar-fill {
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ---------- Alert severity pulse (active alerts only) ---------- */
+@keyframes severity-pulse {
+  0%   { transform: scale(1);    opacity: 1; }
+  50%  { transform: scale(1.25); opacity: 0.7; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+.severity-dot-pulse {
+  animation: severity-pulse 2s ease-in-out infinite;
+}
+
+/* ---------- Hero gradient crossfade ---------- */
+.hero-bg-layer,
+.hero-card-bg {
+  transition: opacity 0.8s ease;
+}
+
+/* ---------- Lightning flash for hero thunderstorm ---------- */
+@keyframes hero-lightning {
+  0%, 92%, 100% { opacity: 0; }
+  93% { opacity: 0.55; }
+  94.5% { opacity: 0; }
+  96% { opacity: 0.35; }
+  97.5% { opacity: 0; }
+}
+.hero-lightning {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.7) 0%, transparent 65%);
+  opacity: 0;
+  animation: hero-lightning 7s infinite;
+}
+
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -235,6 +335,9 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+  /* keep opacity fades so content still appears */
+  .value-in, .page-fade { animation-duration: 0.2s !important; }
+  .stagger-in > * { animation: page-fade-in 0.2s ease-out both !important; }
 }
 
 /* ---------- Map layer fade ---------- */

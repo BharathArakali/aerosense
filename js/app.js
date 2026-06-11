@@ -253,28 +253,111 @@ function renderHero() {
   const windVal = convertWind(current.windSpeed, units.wind);
   const wUnit = windUnit(units.wind);
 
-  // Hero temp
-  qsa('.hero-temp-val').forEach(el => el.textContent = `${tempVal}${tUnit}`);
+  // Hero temp — count up from 0 on first render, instant afterwards
+  qsa('.hero-temp-val').forEach(node => {
+    if (!state.tempAnimated && node.classList.contains('hero-temp')) {
+      countUp(node, tempVal, tUnit, 800);
+    } else {
+      node.textContent = `${tempVal}${tUnit}`;
+    }
+  });
+  state.tempAnimated = true;
+
   qsa('.hero-condition-text').forEach(el => el.textContent = info.desc);
   qsa('.hero-condition-icon').forEach(el => el.textContent = info.icon);
   qsa('.hero-feels-val').forEach(el => el.textContent = `Feels like ${feelsVal}${tUnit}`);
+
+  // AeroScore™ pill in hero (P3-A)
+  const pillEl = document.getElementById('hero-aero-pill');
+  if (pillEl && aqi) {
+    const heroScore = calcAeroScore({
+      aqi: aqi.current.aqi, temp: current.temp, humidity: current.humidity,
+      uv: current.uvIndex, wind: current.windSpeed,
+    });
+    const hg = gaugeColor(heroScore);
+    pillEl.style.display = '';
+    pillEl.innerHTML = `<span class="hap-dot" style="background:${hg.color}"></span>AeroScore™ ${heroScore} · ${hg.label}`;
+  }
   qsa('.hero-location-name').forEach(el => {
     const t = el.querySelector('.hero-location-name-text');
     if (t) t.textContent = locationName; else el.textContent = locationName;
   });
   qsa('.hero-updated').forEach(el => el.textContent = `${timeAgo(current.timestamp)}`);
 
-  // Metrics row in hero
-  const humEl = qs('.hero-humidity'); if (humEl) humEl.textContent = `${current.humidity}%`;
-  const windEl = qs('.hero-wind'); if (windEl) windEl.textContent = `${windVal} ${wUnit}`;
-  const pressEl = qs('.hero-pressure'); if (pressEl) pressEl.textContent = `${convertPressure(current.pressure, units.pressure)} ${pressureUnit(units.pressure)}`;
-  const visEl = qs('.hero-visibility'); if (visEl) visEl.textContent = `${convertDistance(current.visibility, units.distance)} ${distanceUnit(units.distance)}`;
+  // Metrics row in hero — qsa, because the fullscreen overlay holds duplicate
+  // .hero-* nodes earlier in the DOM and qs() would only ever fill those.
+  qsa('.hero-humidity').forEach(n => n.textContent = `${current.humidity}%`);
+  qsa('.hero-wind').forEach(n => n.textContent = `${windVal} ${wUnit}`);
+  qsa('.hero-pressure').forEach(n => n.textContent = `${convertPressure(current.pressure, units.pressure)} ${pressureUnit(units.pressure)}`);
+  qsa('.hero-visibility').forEach(n => n.textContent = `${convertDistance(current.visibility, units.distance)} ${distanceUnit(units.distance)}`);
 
-  // Background based on weather condition
+  // Dynamic gradient background (weather + time aware, user-toggleable)
+  const bgClass = heroBackgroundClass(info, current, daily);
   qsa('.hero-card-bg').forEach(bg => {
-    bg.className = 'hero-card-bg ' + info.bg;
+    bg.className = 'hero-card-bg ' + bgClass;
     if (!current.isDay) bg.classList.add('night');
+    // Lightning flash layer for thunderstorms
+    let flash = bg.querySelector('.hero-lightning');
+    if (bgClass === 'thunderstorm' && settings.dynamicAnimations !== false) {
+      if (!flash) {
+        flash = document.createElement('div');
+        flash.className = 'hero-lightning';
+        bg.appendChild(flash);
+      }
+    } else if (flash) {
+      flash.remove();
+    }
   });
+}
+
+/**
+ * Pick the hero gradient class from weather + time of day (P3-A).
+ * Falls back to the static brand gradient when Dynamic Backgrounds is off.
+ */
+function heroBackgroundClass(info, current, daily) {
+  if (state.settings.dynamicBackgrounds === false) return 'static-brand';
+
+  // Golden hour: within 50 min of sunrise or sunset
+  const today = daily?.[0];
+  if (today?.sunrise && today?.sunset) {
+    const now = Date.now();
+    const GOLDEN = 50 * 60 * 1000;
+    if (Math.abs(now - new Date(today.sunrise).getTime()) < GOLDEN ||
+        Math.abs(now - new Date(today.sunset).getTime()) < GOLDEN) {
+      return 'goldenhour';
+    }
+  }
+
+  if (!current.isDay) {
+    if (info.bg === 'thunderstorm') return 'thunderstorm';
+    if (info.bg === 'sunny') return 'night-clear';
+    return 'night-cloudy';
+  }
+  return info.bg; // sunny | cloudy | rainy | thunderstorm | snow | fog
+}
+
+/** Animate a numeric value from 0 → target inside `node` over `dur` ms. */
+function countUp(node, target, suffix = '', dur = 800) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    node.textContent = `${target}${suffix}`;
+    return;
+  }
+  const t0 = performance.now();
+  const tick = now => {
+    const p = Math.min((now - t0) / dur, 1);
+    const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+    node.textContent = `${Math.round(target * eased)}${suffix}`;
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+/** P3-C AeroScore colour bands. */
+function gaugeColor(score) {
+  if (score <= 25) return { color: '#F87171', label: 'Poor' };
+  if (score <= 50) return { color: '#FB923C', label: 'Fair' };
+  if (score <= 75) return { color: '#86EFAC', label: 'Good' };
+  return { color: '#22C55E', label: 'Excellent' };
 }
 
 // ---- Metrics Grid ----
@@ -289,8 +372,8 @@ function renderMetricsGrid() {
     {
       id: 'metric-aqi',
       label: 'AQI', labelIcon: '🌿',
-      value: aqi?.current.aqi || '--',
-      sub: aqiInfo.label,
+      value: aqi ? aqi.current.aqi : '<span class="skeleton skeleton-text-sm skeleton-text"></span>',
+      sub: aqi ? aqiInfo.label : '',
       color: aqiInfo.color,
       sparkValues: aqi?.hourlyAqi.slice(0,12).map(h => h.aqi),
     },
@@ -338,11 +421,14 @@ function renderMetricsGrid() {
 
   const grid = el('metrics-grid');
   if (!grid) return;
+  // Stagger cards in only on the first paint (not on every auto-refresh)
+  if (!state.metricsRendered) { grid.classList.add('stagger-in'); state.metricsRendered = true; }
+  else { grid.classList.remove('stagger-in'); }
   grid.innerHTML = metrics.map(m => `
-    <div class="metric-card card-lift" id="${m.id}">
+    <div class="metric-card card-lift mc-accent" id="${m.id}" style="--mc-accent:${m.color}">
       <div class="mc-label"><span class="mc-label-icon">${m.labelIcon}</span> ${m.label}</div>
-      <div class="mc-value" style="color:${m.color}">${m.value}</div>
-      <div class="mc-sub">${m.sub}</div>
+      <div class="mc-value value-in" style="color:${m.color}">${m.value}</div>
+      ${m.sub ? `<span class="mc-status" style="color:${m.color};background:${hexToRgba(m.color, 0.14)}">${m.sub}</span>` : ''}
       ${m.sparkValues ? `<div class="mc-sparkline" id="${m.id}-spark"></div>` : ''}
     </div>
   `).join('');
@@ -366,7 +452,6 @@ function renderAQIPanel() {
   const panel = el('aqi-panel');
   if (!panel) return;
 
-  const pct = Math.min(current.aqi / 500 * 100, 100);
   const trend = state.aqi?.hourlyAqi?.[1]?.aqi || current.aqi;
   const diff = trend - current.aqi;
   const diffStr = diff > 0 ? `↑ ${diff}` : diff < 0 ? `↓ ${Math.abs(diff)}` : '→ Stable';
@@ -376,19 +461,14 @@ function renderAQIPanel() {
       <span class="section-title">AQI (Air Quality Index)</span>
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
     </div>
-    <div class="ap-value" style="color:${info.color}">${current.aqi}</div>
+    <div class="ap-value value-in" style="color:${info.color}">${current.aqi}</div>
     <div class="ap-label" style="color:${info.color}">${info.label}</div>
     <div class="ap-vs-normal mt-sm">
       <span style="color:${diff >= 0 ? 'var(--color-fair)' : 'var(--color-excellent)'}">
         ${diffStr} vs last hour
       </span>
     </div>
-    <div class="aqi-gauge-bar mt-md mb-sm">
-      <div class="aqi-pointer" style="left:${pct}%"></div>
-    </div>
-    <div class="aqi-bar-labels">
-      <span>0</span><span>100</span><span>200</span><span>300</span><span>500</span>
-    </div>
+    ${buildAqiSegmentBar(current.aqi)}
     <div class="section-title mt-lg mb-sm" style="font-size:var(--text-sm)">Primary Pollutants</div>
     <div class="pollutants-list">
       <div class="pollutant-row"><span class="pr-dot" style="background:#f59e0b"></span><span class="pr-name">PM2.5</span><span class="pr-val">${current.pm25} µg/m³</span></div>
@@ -398,6 +478,46 @@ function renderAQIPanel() {
       <div class="pollutant-row"><span class="pr-dot" style="background:#8b5cf6"></span><span class="pr-name">CO</span><span class="pr-val">${current.co} ppm</span></div>
     </div>
   `;
+
+  // Animate the needle sliding into position (CSS transition in animations.css)
+  const needle = panel.querySelector('.aqi-needle');
+  if (needle) {
+    const target = needle.style.left;
+    needle.style.left = '0%';
+    requestAnimationFrame(() => requestAnimationFrame(() => { needle.style.left = target; }));
+  }
+}
+
+/**
+ * P3-D — Horizontal segmented AQI gauge with an animated needle.
+ * Six EPA bands as equal-width segments; needle position is piecewise-linear
+ * within its band so the visual position always matches the category.
+ */
+function buildAqiSegmentBar(aqiVal) {
+  const bands = [
+    { to: 50,  color: 'var(--color-excellent)' },
+    { to: 100, color: 'var(--color-moderate)'  },
+    { to: 150, color: 'var(--color-fair)'      },
+    { to: 200, color: 'var(--color-poor)'      },
+    { to: 300, color: '#DC2626'                },
+    { to: 500, color: 'var(--color-hazardous)' },
+  ];
+  const v = Math.max(0, Math.min(500, aqiVal));
+  let idx = bands.findIndex(b => v <= b.to);
+  if (idx === -1) idx = bands.length - 1;
+  const lo = idx === 0 ? 0 : bands[idx - 1].to;
+  const within = (v - lo) / (bands[idx].to - lo);
+  const pct = ((idx + within) / bands.length) * 100;
+
+  const segs = bands.map(b => `<span class="aqi-seg" style="background:${b.color}"></span>`).join('');
+  return `
+    <div class="aqi-seg-bar mt-md" role="img" aria-label="AQI ${aqiVal} on a 0 to 500 scale">
+      ${segs}
+      <span class="aqi-needle" style="left:${pct.toFixed(1)}%"></span>
+    </div>
+    <div class="aqi-bar-labels">
+      <span>0</span><span>100</span><span>200</span><span>300</span><span>500</span>
+    </div>`;
 }
 
 // ---- Scores ----
@@ -547,11 +667,25 @@ function renderAeroScoreCard(score, info, metrics) {
   if (!card) return;
   const factors = aeroFactors(metrics);
 
+  const g = gaugeColor(score);
   const ringEl = card.querySelector('#aero-ring');
-  if (ringEl) ringEl.innerHTML = bigScoreRing(score, info.color);
+  if (ringEl) {
+    ringEl.innerHTML = bigScoreRing(score, g.color);
+    // Kick off the arc fill from 0 and count the number up
+    const fillPath = ringEl.querySelector('.aero-gauge-fill');
+    const numEl = ringEl.querySelector('.aero-gauge-num');
+    if (fillPath) {
+      const target = fillPath.style.strokeDashoffset;
+      fillPath.style.strokeDashoffset = fillPath.getAttribute('stroke-dasharray');
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        fillPath.style.strokeDashoffset = target;
+      }));
+    }
+    if (numEl) countUp(numEl, score, '', 1000);
+  }
 
   const statusEl = card.querySelector('#aero-status');
-  if (statusEl) { statusEl.textContent = info.label; statusEl.style.color = info.color; }
+  if (statusEl) { statusEl.textContent = g.label; statusEl.style.color = g.color; }
 
   const adviceEl = card.querySelector('#aero-advice');
   if (adviceEl) adviceEl.textContent = aeroAdvice(score, factors);
@@ -569,20 +703,33 @@ function renderAeroScoreCard(score, info, metrics) {
   }
 }
 
-// Big donut with the score number centered inside
+// Radial speedometer gauge (P3-C): 270° sweep from 210° over the top to -30°,
+// animated fill + count-up score number rendered in Space Grotesk.
 function bigScoreRing(score, color) {
-  const size = 132, r = 56, cx = 66, cy = 66, sw = 11;
-  const circ = 2 * Math.PI * r;
-  const off = circ * (1 - Math.max(0, Math.min(1, score / 100)));
+  const size = 150, cx = 75, cy = 78, r = 60, sw = 12;
+  const clamped = Math.max(0, Math.min(100, score));
+  const polar = deg => {
+    const rad = (deg * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
+  };
+  // angle(t) = 210° − 270°·t  (t in 0..1) — sweeps clockwise over the top
+  const arcPath = t => {
+    const p0 = polar(210), p1 = polar(210 - 270 * Math.max(0.001, t));
+    const large = (270 * t) > 180 ? 1 : 0;
+    return `M ${p0.x.toFixed(2)} ${p0.y.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`;
+  };
+  const fullLen = (270 / 360) * 2 * Math.PI * r;
+  const fillLen = fullLen * (clamped / 100);
   return `
     <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="AeroScore ${score} of 100">
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(128,128,128,.16)" stroke-width="${sw}"/>
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}"
-        stroke-dasharray="${circ}" stroke-dashoffset="${off}" stroke-linecap="round"
-        transform="rotate(-90 ${cx} ${cy})" style="transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1)"/>
-      <text x="${cx}" y="${cy - 2}" text-anchor="middle" dominant-baseline="middle"
-        style="font-size:34px;font-weight:800;fill:var(--text-primary)">${score}</text>
-      <text x="${cx}" y="${cy + 22}" text-anchor="middle" dominant-baseline="middle"
+      <path d="${arcPath(1)}" fill="none" stroke="var(--border-primary)" stroke-width="${sw}" stroke-linecap="round"/>
+      <path d="${arcPath(1)}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-linecap="round"
+        class="aero-gauge-fill"
+        stroke-dasharray="${fullLen.toFixed(2)}" stroke-dashoffset="${fullLen.toFixed(2)}"
+        style="stroke-dashoffset:${(fullLen - fillLen).toFixed(2)}"/>
+      <text x="${cx}" y="${cy - 4}" text-anchor="middle" dominant-baseline="middle"
+        class="aero-gauge-num" style="font-size:42px;font-weight:800;fill:var(--text-primary);font-family:'Space Grotesk',sans-serif">0</text>
+      <text x="${cx}" y="${cy + 26}" text-anchor="middle" dominant-baseline="middle"
         style="font-size:12px;font-weight:600;fill:var(--text-secondary)">/ 100</text>
     </svg>`;
 }
@@ -604,49 +751,78 @@ function renderHomeAqiChart() {
     todayBadge.style.background = hexToRgba(info.color, 0.15);
   }
 
-  // Build a 7-day series from stored history; fall back to synthesized values
-  const history = Storage.getHistory();
+  // Real 7-day series straight from the Air Quality API forecast
+  // (daily7 = per-calendar-day averages of hourly US AQI; no synthesized data)
+  const daily7 = state.aqi?.daily7 || [];
   const byDay = [];
-  for (let i = 6; i >= 0; i--) {
+  for (let i = 0; i < 7; i++) {
     const d = new Date();
-    d.setDate(d.getDate() - i);
-    const key = d.toDateString();
-    const rec = [...history].reverse().find(h => h.date === key && typeof h.aqi === 'number');
+    d.setDate(d.getDate() + i);
     byDay.push({
-      label: d.toLocaleDateString(undefined, { weekday: 'short' }),
-      aqi: rec ? Math.round(rec.aqi) : null,
+      label: i === 0 ? 'Today' : d.toLocaleDateString(undefined, { weekday: 'short' }),
+      aqi: daily7[i]?.avg || null,
     });
   }
-  // Today is always the live value
-  byDay[6].aqi = Math.round(curAqi);
-  // Fill any gaps with a gentle synthesized trend around the current value
-  for (let i = 0; i < 7; i++) {
-    if (byDay[i].aqi == null) {
-      const wobble = Math.round((Math.sin(i * 1.3) * 0.12 + (i - 3) * 0.02) * curAqi);
-      byDay[i].aqi = Math.max(5, Math.round(curAqi + wobble));
-    }
+  // Today always reflects the live current reading
+  byDay[0].aqi = Math.round(curAqi);
+  // Carry the last known value forward if the forecast horizon falls short
+  for (let i = 1; i < 7; i++) {
+    if (!byDay[i].aqi) byDay[i].aqi = byDay[i - 1].aqi;
   }
 
-  const colors = byDay.map(d => getAQILabel(d.aqi).color);
   if (homeAqiChart) { homeAqiChart.destroy(); homeAqiChart = null; }
+
+  // Theme-aware colours pulled from CSS variables (P3-H: no hardcoded values)
+  const css = getComputedStyle(document.documentElement);
+  const brand = (css.getPropertyValue('--color-brand') || '#3B82F6').trim();
+  const textSecondary = (css.getPropertyValue('--text-secondary') || '#8DA3C4').trim();
+  const bgCard = (css.getPropertyValue('--bg-card') || '#0d1a30').trim();
+  const borderPrimary = (css.getPropertyValue('--border-primary') || '#1e3254').trim();
+
+  // Gradient fill under the line: brand → transparent
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.parentElement?.clientHeight || 100);
+  grad.addColorStop(0, hexToRgba(brand, 0.35));
+  grad.addColorStop(1, hexToRgba(brand, 0));
+
+  const pointRadii = byDay.map((_, i) => (i === byDay.length - 1 ? 4 : 0));
   homeAqiChart = new window.Chart(canvas, {
-    type: 'bar',
+    type: 'line',
     data: {
       labels: byDay.map(d => d.label),
       datasets: [{
         data: byDay.map(d => d.aqi),
-        backgroundColor: colors,
-        borderRadius: 6,
-        borderSkipped: false,
-        maxBarThickness: 22,
+        borderColor: brand,
+        backgroundColor: grad,
+        fill: true,
+        tension: 0.4,
+        borderWidth: 2,
+        pointRadius: pointRadii,
+        pointHoverRadius: 5,
+        pointBackgroundColor: brand,
+        pointBorderColor: bgCard,
+        pointBorderWidth: 2,
       }],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `AQI ${c.parsed.y}` } } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: bgCard,
+          borderColor: borderPrimary,
+          borderWidth: 1,
+          titleColor: textSecondary,
+          bodyColor: textSecondary,
+          callbacks: { label: c => `AQI ${c.parsed.y}` },
+        },
+      },
       scales: {
-        x: { grid: { display: false }, ticks: { color: 'rgba(128,128,128,.7)', font: { size: 10 } } },
+        x: {
+          grid: { display: false },
+          ticks: { color: textSecondary, font: { size: 10 } },
+        },
         y: { display: false, beginAtZero: true, suggestedMax: Math.max(120, curAqi + 30) },
       },
       animation: { duration: 600 },
@@ -756,12 +932,16 @@ function renderHourlyForecast() {
     const info = getWeatherInfo(h.weatherCode);
     const temp = convertTemp(h.temp, units.temperature);
     const isNow = i === 0;
+    // Precip indicator only when probability is meaningful (>20%)
+    const precip = h.precipProb > 20
+      ? `<div class="hi-precip"><span class="hi-precip-dot"></span>${h.precipProb}%</div>`
+      : `<div class="hi-precip hi-precip-empty"></div>`;
     return `
       <div class="hourly-item ${isNow ? 'active' : ''}">
         <div class="hi-time">${isNow ? 'Now' : formatHour(h.time)}</div>
         <div class="hi-icon">${info.icon}</div>
         <div class="hi-temp">${temp}°</div>
-        <div class="hi-precip">💧 ${h.precipProb}%</div>
+        ${precip}
       </div>
     `;
   }).join('');
@@ -891,16 +1071,33 @@ function renderDailyForecast() {
   const container = el('daily-forecast');
   if (!container) return;
 
-  container.innerHTML = weather.daily.slice(0, 7).map(d => {
+  const days = weather.daily.slice(0, 7);
+  // Week-wide range so each day's bar is proportional (P3-F)
+  const weekMin = Math.min(...days.map(d => d.tempMin));
+  const weekMax = Math.max(...days.map(d => d.tempMax));
+  const span = Math.max(weekMax - weekMin, 1);
+
+  container.innerHTML = days.map((d, i) => {
     const info = getWeatherInfo(d.weatherCode);
     const hi = convertTemp(d.tempMax, units.temperature);
     const lo = convertTemp(d.tempMin, units.temperature);
-    const tU = tempUnit(units.temperature);
+    const isToday = i === 0;
+    const left = ((d.tempMin - weekMin) / span) * 100;
+    const width = Math.max(((d.tempMax - d.tempMin) / span) * 100, 6);
+    // Warmth-coded gradient end: brand blue (cool) → amber (warm)
+    const warm = Math.max(0, Math.min(1, (d.tempMax - 10) / 25));
+    const c2 = warm > 0.55 ? '#f59e0b' : warm > 0.3 ? '#60A5FA' : 'var(--color-brand-light)';
+    const precip = d.precipProb > 20
+      ? `<span class="di-precip"><span class="hi-precip-dot"></span>${d.precipProb}%</span>`
+      : `<span class="di-precip"></span>`;
     return `
-      <div class="daily-item">
-        <div class="di-day">${formatDay(d.date)}</div>
+      <div class="daily-item ${isToday ? 'today' : ''}">
+        <div class="di-day">${isToday ? 'Today' : formatDay(d.date)}</div>
         <div class="di-icon">${info.icon}</div>
-        <div class="di-precip">💧 ${d.precipProb}%</div>
+        ${precip}
+        <div class="di-range">
+          <span class="di-range-fill" style="left:${left.toFixed(1)}%;width:${width.toFixed(1)}%;background:linear-gradient(90deg,var(--color-brand-light),${c2})"></span>
+        </div>
         <div class="di-temps">
           <span class="hi">${hi}°</span>
           <span class="lo">${lo}°</span>
@@ -998,7 +1195,7 @@ function renderSavedPlaces() {
       <div class="spi-icon">📍</div>
       <div class="spi-body">
         <div class="spi-name">${p.name}</div>
-        <div class="spi-state">${p.state || '–'}</div>
+        <div class="spi-state">${p.state || ''}</div>
       </div>
       <div class="spi-right">
         <span class="spi-temp">${p.temp}°</span>

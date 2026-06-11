@@ -72,6 +72,9 @@ function renderPreferences() {
   const animToggle = el('pref-animations');
   if (animToggle) animToggle.checked = dynamicAnimations;
 
+  const dynBgToggle = el('pref-dynamic-bg');
+  if (dynBgToggle) dynBgToggle.checked = state.settings.dynamicBackgrounds !== false;
+
   const freqEl = el('pref-frequency-val');
   if (freqEl) freqEl.textContent = `${updateFrequency} minutes`;
 
@@ -138,6 +141,15 @@ function setupEventListeners() {
   if (animToggle) {
     animToggle.addEventListener('change', () => {
       state.settings.dynamicAnimations = animToggle.checked;
+      save();
+    });
+  }
+
+  // Dynamic backgrounds toggle
+  const dynBgToggle = el('pref-dynamic-bg');
+  if (dynBgToggle) {
+    dynBgToggle.addEventListener('change', () => {
+      state.settings.dynamicBackgrounds = dynBgToggle.checked;
       save();
     });
   }

@@ -51,12 +51,17 @@ function parseAQI(raw) {
     timestamp: Date.now(),
   };
 
-  // Hourly AQI trend (next 24h)
-  const hourlyAqi = (h.us_aqi || []).slice(0, 24).map((v, i) => ({
-    time: h.time[i],
+  // Hourly AQI trend (next 24h, anchored to the current hour — the raw
+  // hourly arrays start at local midnight, so index 0 is NOT "now")
+  const nowHour = new Date(c.time || Date.now());
+  nowHour.setMinutes(0, 0, 0);
+  let start = (h.time || []).findIndex(t => new Date(t) >= nowHour);
+  if (start < 0) start = 0;
+  const hourlyAqi = (h.us_aqi || []).slice(start, start + 24).map((v, i) => ({
+    time: h.time[start + i],
     aqi: Math.round(v || 0),
-    pm25: +(h.pm2_5?.[i] || 0).toFixed(1),
-    pm10: +(h.pm10?.[i] || 0).toFixed(1),
+    pm25: +(h.pm2_5?.[start + i] || 0).toFixed(1),
+    pm10: +(h.pm10?.[start + i] || 0).toFixed(1),
   }));
 
   // 7-day daily average from hourly

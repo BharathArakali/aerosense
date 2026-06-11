@@ -47,6 +47,7 @@ const Storage = (() => {
     units: { temperature: 'C', wind: 'kmh', pressure: 'hPa', distance: 'km' },
     fullscreenWeather: false,
     dynamicAnimations: true,
+    dynamicBackgrounds: true,
     updateFrequency: 10,
     language: 'en',
     alertPrefs: { rain: true, aqi: true, uv: true, wind: false, severe: true },

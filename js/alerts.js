@@ -165,13 +165,15 @@ function renderAlerts() {
   const upcomingContainer = el('upcoming-alerts');
   if (!activeContainer || !upcomingContainer) return;
 
+  const catName = filter === 'all' ? ''
+    : (filter === 'aqi' || filter === 'uv' ? filter.toUpperCase() : filter) + ' ';
   activeContainer.innerHTML   = active.length
     ? active.map(a => buildAlertCard(a)).join('')
-    : `<div style="padding:var(--space-xl);opacity:.5;text-align:center">No active alerts</div>`;
+    : buildAllClear(`No active ${catName}alerts right now`);
 
   upcomingContainer.innerHTML = upcoming.length
     ? upcoming.map(a => buildAlertCard(a)).join('')
-    : `<div style="padding:var(--space-xl);opacity:.5;text-align:center">No upcoming alerts</div>`;
+    : buildAllClear(`No upcoming ${catName}alerts right now`);
 
   // Wire interactions after DOM update
   requestAnimationFrame(wireAlertCards);
@@ -219,6 +221,19 @@ const ALERT_DETAIL_ACTIONS = {
   ],
 };
 
+// P3-K: friendly "All Clear" empty state instead of blank space
+function buildAllClear(subtext) {
+  return `
+    <div class="alerts-all-clear">
+      <svg width="44" height="44" fill="none" stroke="var(--color-excellent)" stroke-width="1.8" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4"/>
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/>
+      </svg>
+      <div class="aac-title">All Clear</div>
+      <div class="aac-sub">${subtext}</div>
+    </div>`;
+}
+
 function buildAlertCard(alert) {
   const badgeLabel = alert.status === 'active' ? 'Active' : 'Upcoming';
   const advice     = ALERT_ADVICE[alert.severity] || ALERT_ADVICE[alert.status] || '';
@@ -228,7 +243,7 @@ function buildAlertCard(alert) {
       <div class="ac-main-row">
         <div class="ac-icon-wrap" style="background:${alert.iconBg}">${alert.icon}</div>
         <div class="ac-body">
-          <div class="ac-title">${alert.title}</div>
+          <div class="ac-title">${alert.status === 'active' ? `<span class="ac-severity-dot severity-dot-pulse" style="background:${alert.badgeColor || 'var(--color-poor)'}"></span>` : ''}${alert.title}</div>
           <div class="ac-desc">${alert.desc}</div>
           <div class="ac-meta">
             <span>

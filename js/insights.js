@@ -250,7 +250,7 @@ function renderTodayVsNormal() {
 function getChartColors(isDark) {
   return {
     grid: isDark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.05)',
-    tick: isDark ? '#64748b' : '#94a3b8',
+    tick: isDark ? '#8DA3C4' : '#64748b',
     tooltip: isDark ? '#1c2537' : '#fff',
   };
 }

@@ -232,6 +232,9 @@
       <!-- ===== RESULTS ===== -->
       <div id="compare-results" style="display:none">
 
+        <!-- P3-I: Overall Winner card -->
+        <div id="overall-winner-card"></div>
+
         <!-- CITYSCORE OVERVIEW -->
         <div class="card cmp-score-overview" style="padding:var(--space-xl);margin-bottom:var(--space-2xl)">
           <div class="cmp-section-header">
@@ -240,18 +243,18 @@
           </div>
           <div class="cmp-score-row">
             <div class="cmp-score-card" id="score-card-a">
-              <div class="csc-city-name" id="score-name-a">–</div>
-              <div class="csc-score" id="score-val-a">–</div>
-              <div class="csc-label" id="score-label-a">–</div>
+              <div class="csc-city-name" id="score-name-a"><span class="skeleton skeleton-text"></span></div>
+              <div class="csc-score" id="score-val-a"><span class="skeleton skeleton-text"></span></div>
+              <div class="csc-label" id="score-label-a"><span class="skeleton skeleton-text"></span></div>
               <div class="csc-winner-tag" id="winner-tag-a" style="display:none">🏆 Overall Winner</div>
             </div>
             <div class="cmp-score-middle" id="score-middle">
               <div class="csm-vs">VS</div>
             </div>
             <div class="cmp-score-card" id="score-card-b">
-              <div class="csc-city-name" id="score-name-b">–</div>
-              <div class="csc-score" id="score-val-b">–</div>
-              <div class="csc-label" id="score-label-b">–</div>
+              <div class="csc-city-name" id="score-name-b"><span class="skeleton skeleton-text"></span></div>
+              <div class="csc-score" id="score-val-b"><span class="skeleton skeleton-text"></span></div>
+              <div class="csc-label" id="score-label-b"><span class="skeleton skeleton-text"></span></div>
               <div class="csc-winner-tag" id="winner-tag-b" style="display:none">🏆 Overall Winner</div>
             </div>
           </div>
@@ -267,8 +270,8 @@
           </div>
           <div class="cdc-inner">
             <div class="cdc-badge">Recommended</div>
-            <div class="cdc-city" id="decision-city">–</div>
-            <div class="cdc-reason" id="decision-reason">–</div>
+            <div class="cdc-city" id="decision-city"><span class="skeleton skeleton-text"></span></div>
+            <div class="cdc-reason" id="decision-reason"><span class="skeleton skeleton-text"></span></div>
           </div>
         </div>
 

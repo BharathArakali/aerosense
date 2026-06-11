@@ -560,6 +560,7 @@ function renderResults() {
   const scoreA = calcCityScore(state.weatherA, state.aqiA);
   const scoreB = calcCityScore(state.weatherB, state.aqiB);
 
+  renderWinnerCard(scoreA, scoreB);
   renderScoreOverview(scoreA, scoreB);
   renderDecisionCard(scoreA, scoreB);
   renderMetricsTable();
@@ -569,6 +570,61 @@ function renderResults() {
   renderCharts(scoreA, scoreB);
   renderForecast(state.forecastMode);
   renderMaps();
+}
+
+// ── Overall Winner card (P3-I) ─────────────────────────────
+function renderWinnerCard(scoreA, scoreB) {
+  const wrap = el('overall-winner-card');
+  if (!wrap) return;
+  const nameA = state.cityA.name.split(',')[0];
+  const nameB = state.cityB.name.split(',')[0];
+  const aWins = scoreA.total >= scoreB.total;
+  const winName  = aWins ? nameA : nameB;
+  const winScore = aWins ? scoreA : scoreB;
+  const loseScore = aWins ? scoreB : scoreA;
+
+  const barColor = t => t > 75 ? 'var(--color-excellent)' : t > 50 ? 'var(--color-good)'
+                  : t > 25 ? 'var(--color-fair)' : 'var(--color-poor)';
+
+  // Which metrics does the winner actually win?
+  const aqiA = state.aqiA?.current?.aqi ?? 60;
+  const aqiB = state.aqiB?.current?.aqi ?? 60;
+  const wins = [];
+  const winAqi = aWins ? aqiA : aqiB, loseAqi = aWins ? aqiB : aqiA;
+  if (winAqi < loseAqi) wins.push('Better AQI');
+  const comfortW = winScore.components.humScore + winScore.components.tempScore;
+  const comfortL = loseScore.components.humScore + loseScore.components.tempScore;
+  if (comfortW >= comfortL) wins.push('Better Comfort');
+  const outdoorW = aWins
+    ? calcActivityScore(ACTIVITIES[1], state.weatherA, state.aqiA)
+    : calcActivityScore(ACTIVITIES[1], state.weatherB, state.aqiB);
+  const outdoorL = aWins
+    ? calcActivityScore(ACTIVITIES[1], state.weatherB, state.aqiB)
+    : calcActivityScore(ACTIVITIES[1], state.weatherA, state.aqiA);
+  if (outdoorW >= outdoorL) wins.push('Better Outdoor Conditions');
+  if (winScore.components.uvScore > loseScore.components.uvScore) wins.push('Lower UV');
+  if (winScore.components.windScore > loseScore.components.windScore) wins.push('Calmer Winds');
+
+  const side = (name, score, isWin) => `
+    <div class="owc-side ${isWin ? 'owc-win' : ''}">
+      <div class="owc-name">${isWin ? '👑 ' : ''}${name}</div>
+      <div class="owc-score">CityScore™ <strong>${score.total}</strong></div>
+      <div class="owc-bar"><span class="owc-bar-fill" style="width:${score.total}%;background:${barColor(score.total)}"></span></div>
+    </div>`;
+
+  wrap.innerHTML = `
+    <div class="card owc-card">
+      <div class="owc-head">🏆 Overall Winner</div>
+      <div class="owc-sides">
+        ${side(nameA, scoreA, aWins)}
+        <div class="owc-vs">VS</div>
+        ${side(nameB, scoreB, !aWins)}
+      </div>
+      <div class="owc-verdict">
+        <span class="owc-winner-name">${winName}</span> wins on:
+        <span class="owc-pills">${wins.slice(0, 3).map(w => `<span class="owc-pill">✓ ${w}</span>`).join('')}</span>
+      </div>
+    </div>`;
 }
 
 // ── Score Overview ─────────────────────────────────────────
@@ -641,8 +697,8 @@ function renderDecisionCard(scoreA, scoreB) {
 function renderMetricsTable() {
   const cA = state.weatherA?.current || {};
   const cB = state.weatherB?.current || {};
-  const aqiA = state.aqiA?.current?.aqi ?? '–';
-  const aqiB = state.aqiB?.current?.aqi ?? '–';
+  const aqiA = state.aqiA?.current?.aqi ?? 'No data';
+  const aqiB = state.aqiB?.current?.aqi ?? 'No data';
 
   el('tbl-name-a').textContent = state.cityA.name.split(',')[0];
   el('tbl-name-b').textContent = state.cityB.name.split(',')[0];
@@ -661,7 +717,7 @@ function renderMetricsTable() {
   ];
 
   el('metrics-table').innerHTML = metrics.map(m => {
-    let indA = '≈', indB = '≈', winA = false, winB = false;
+    let indA = '', indB = '', winA = false, winB = false;
     if (m.numA !== null && m.numB !== null && !isNaN(m.numA) && !isNaN(m.numB)) {
       const diff = Math.abs(m.numA - m.numB);
       const threshold = m.comfort ? 3 : 5;
@@ -675,8 +731,8 @@ function renderMetricsTable() {
           winA = m.lowerBetter ? m.numA < m.numB : m.numA > m.numB;
           winB = !winA;
         }
-        indA = winA ? '↑' : '↓';
-        indB = winB ? '↑' : '↓';
+        indA = winA ? '✓' : '';
+        indB = winB ? '✓' : '';
       }
     }
     return `<div class="cmp-metric-row">
@@ -693,8 +749,8 @@ function renderCategoryWinners(scoreA, scoreB) {
   const nameB = state.cityB.name.split(',')[0];
   const cA = state.weatherA?.current || {};
   const cB = state.weatherB?.current || {};
-  const aqiA = state.aqiA?.current?.us_aqi ?? 60;
-  const aqiB = state.aqiB?.current?.us_aqi ?? 60;
+  const aqiA = state.aqiA?.current?.aqi ?? 60;
+  const aqiB = state.aqiB?.current?.aqi ?? 60;
 
   const cats = [
     { label: 'Air Quality',        icon: '💨', winner: aqiA <= aqiB ? nameA : nameB },
@@ -834,9 +890,20 @@ function renderCharts(scoreA, scoreB) {
     Math.round(scoreB.components.rainScore),
   ];
 
+  const css = getComputedStyle(document.documentElement);
+  const cssVar = (n, fb) => (css.getPropertyValue(n) || fb).trim();
+  const CITY_A_COLOR = cssVar('--color-brand', '#3B82F6');
+  const CITY_B_COLOR = '#F59E0B'; // amber — consistent across all compare charts
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)';
-  const tickColor = isDark ? '#8DA3C4' : '#64748b';
+  const tickColor = cssVar('--text-secondary', isDark ? '#8DA3C4' : '#64748b');
+  const tooltipStyle = {
+    backgroundColor: cssVar('--bg-card', isDark ? '#0d1a30' : '#FFFFFF'),
+    borderColor: cssVar('--border-primary', isDark ? '#1e3254' : '#E5E7EB'),
+    borderWidth: 1,
+    titleColor: cssVar('--text-primary', isDark ? '#F0F4FF' : '#0F172A'),
+    bodyColor: tickColor,
+  };
 
   // Destroy old charts
   if (state.radarChart) { state.radarChart.destroy(); state.radarChart = null; }
@@ -849,14 +916,14 @@ function renderCharts(scoreA, scoreB) {
     data: {
       labels: compLabels,
       datasets: [
-        { label: nameA, data: dataA, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.20)', borderWidth: 2, pointBackgroundColor: '#3b82f6' },
-        { label: nameB, data: dataB, borderColor: '#a855f7', backgroundColor: 'rgba(168,85,247,0.20)', borderWidth: 2, pointBackgroundColor: '#a855f7' },
+        { label: nameA, data: dataA, borderColor: CITY_A_COLOR, backgroundColor: 'rgba(59,130,246,0.25)', borderWidth: 2, pointBackgroundColor: CITY_A_COLOR },
+        { label: nameB, data: dataB, borderColor: CITY_B_COLOR, backgroundColor: 'rgba(245,158,11,0.20)', borderWidth: 2, pointBackgroundColor: CITY_B_COLOR },
       ],
     },
     options: {
       responsive: true,
       scales: { r: { min: 0, max: 100, ticks: { stepSize: 25, color: tickColor, backdropColor: 'transparent' }, grid: { color: gridColor }, pointLabels: { color: tickColor, font: { size: 12 } } } },
-      plugins: { legend: { labels: { color: tickColor } } },
+      plugins: { legend: { labels: { color: tickColor } }, tooltip: tooltipStyle },
     },
   });
 
@@ -867,8 +934,8 @@ function renderCharts(scoreA, scoreB) {
     data: {
       labels: compLabels,
       datasets: [
-        { label: nameA, data: dataA, backgroundColor: 'rgba(59,130,246,0.75)', borderRadius: 6 },
-        { label: nameB, data: dataB, backgroundColor: 'rgba(168,85,247,0.75)', borderRadius: 6 },
+        { label: nameA, data: dataA, backgroundColor: 'rgba(59,130,246,0.80)', borderRadius: 6 },
+        { label: nameB, data: dataB, backgroundColor: 'rgba(245,158,11,0.80)', borderRadius: 6 },
       ],
     },
     options: {
@@ -877,7 +944,7 @@ function renderCharts(scoreA, scoreB) {
         x: { ticks: { color: tickColor }, grid: { color: gridColor } },
         y: { min: 0, max: 100, ticks: { color: tickColor }, grid: { color: gridColor } },
       },
-      plugins: { legend: { labels: { color: tickColor } } },
+      plugins: { legend: { labels: { color: tickColor } }, tooltip: tooltipStyle },
     },
   });
 }
@@ -913,7 +980,7 @@ function renderForecast(mode) {
     let html = '<div class="fc-cmp-scroll"><div class="fc-cmp-grid">';
     html += `<div class="fch-header"><span>${nameA}</span><span>Time</span><span>${nameB}</span></div>`;
     for (let i = 0; i < slots; i++) {
-      const t = hA[i]?.time ? new Date(hA[i].time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '–';
+      const t = hA[i]?.time ? new Date(hA[i].time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
       const tA = Math.round(hA[i]?.temp ?? 0);
       const tB = Math.round(hB[i]?.temp ?? 0);
       const pA = hA[i]?.precipProb ?? 0;
@@ -937,7 +1004,7 @@ function renderForecast(mode) {
     let html = '<div class="fc-cmp-scroll"><div class="fc-cmp-grid">';
     html += `<div class="fch-header"><span>${nameA}</span><span>Day</span><span>${nameB}</span></div>`;
     for (let i = 0; i < slots; i++) {
-      const d = dA[i]?.date ? days[new Date(dA[i].date).getDay()] : '–';
+      const d = dA[i]?.date ? days[new Date(dA[i].date).getDay()] : '';
       const hiA = Math.round(dA[i]?.tempMax ?? 0);
       const loA = Math.round(dA[i]?.tempMin ?? 0);
       const hiB = Math.round(dB[i]?.tempMax ?? 0);
